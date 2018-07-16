@@ -1,8 +1,8 @@
 #' Determine presence of female in group
 #'
 #' This function uses census and biography data from the PACE database to
-#' determine the periods of time different females with a specified minimum age
-#' (\code{minAgeF}) were present in a \code{group} from \code{start} to
+#' determine the periods of time females with specified minimum age
+#' \code{minAgeF} were present in a \code{group} from \code{start} to
 #' \code{end}.
 #' The function does only work for females with known DOB
 #'
@@ -63,7 +63,7 @@ determine_presence <- function (census_pace, biography_pace, group, start, end, 
     # Set end_int to DepartDate if last status was "Missing" or "Dead" and within 3 months (±45 days) of DepartDate
     # (to prevent cases where females was just missing for that month but generally still around?)
     # otherwise "error
-    mutate(end_int = case_when(((last_census) == month(end) & last_status == "Alive") ~ as.character(end),
+    mutate(end_int = case_when((month(last_census) == month(end) & last_status == "Alive") ~ as.character(end),
                                (last_status %in% c("Missing", "Dead") &
                                   DepartDate %within% interval(as.Date(last_census)-45, as.Date(last_census)+45)) ~ as.character(DepartDate),
            TRUE ~ "error"))

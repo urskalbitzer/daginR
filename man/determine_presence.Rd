@@ -21,8 +21,8 @@ for which the presence of females will be determined}
 }
 \description{
 This function uses census and biography data from the PACE database to
-determine the periods of time different females with a specified minimum age
-(\code{minAgeF}) were present in a \code{group} from \code{start} to
+determine the periods of time females with specified minimum age
+\code{minAgeF} were present in a \code{group} from \code{start} to
 \code{end}.
 The function does only work for females with known DOB
 }
