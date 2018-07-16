@@ -1,0 +1,43 @@
+---
+output:
+  md_document:
+    variant: markdown_github
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "README-"
+)
+```
+
+# daginR
+
+A Package to process behavioral data from capuchins and red colobus, and to conduct analyses of sociality
+
+
+### Parts
+The package consists of three parts:
+
+1. Process various types of data (focal, census, etc.) from capuchins
+2. Process various types of data (scan, demography, etc.) from red colobus
+3. Calculate social network parameters
+
+### 1. Process capuchin data
+Filename: process-capuchin.data.R  
+
+Functions:
+
+- determine_presence
+- calc_effort_AB
+- dyadic_rates
+- dyadic_rates_multi 
+- dyadic_rates_to_dsi
+- dsi_multi (try to integrate above)
+- dsi_topn (necessary?)
+
+## Example
+

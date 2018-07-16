@@ -1,0 +1,15 @@
+Package: daginR
+Type: Package
+Title: Analyses of Monkey Data from Scan and Focal Samples
+Version: 0.0.0.9000
+Author: Urs Kalbitzer
+Maintainer: Urs Kalbitzer <urskalbitzer@gmail.com>
+Description: A package to 1) process focal data from Santa Rosa Capuchins
+    and scan data from Kibale Red Colobus, and
+    2) derive social network parameters from the processed data
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+Imports: tidyverse (>= 1.2.1),
+    igraph
+RoxygenNote: 6.0.1
