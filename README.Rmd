@@ -1,7 +1,5 @@
 ---
-output:
-  md_document:
-    variant: markdown_github
+output: github_document
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -21,8 +19,8 @@ A Package to process behavioral data from capuchins and red colobus, and to cond
 
 ### Parts
 The package consists of three parts:
-
-1. Process various types of data (focal, census, etc.) from capuchins
+  
+  1. Process various types of data (focal, census, etc.) from capuchins
 2. Process various types of data (scan, demography, etc.) from red colobus
 3. Calculate social network parameters
 
@@ -30,8 +28,8 @@ The package consists of three parts:
 Filename: process-capuchin.data.R  
 
 Functions:
-
-- determine_presence
+  
+  - determine_presence
 - calc_effort_AB
 - dyadic_rates
 - dyadic_rates_multi 
