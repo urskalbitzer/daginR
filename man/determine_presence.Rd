@@ -11,11 +11,9 @@ determine_presence(census_pace, biography_pace, group, start, end, minAgeF)
 
 \item{biography_pace}{Dataframe from the PACE database with individual biography data}
 
-\item{group}{The name of the social group for which the presence of females
-will be determined}
+\item{group}{Name of the social group}
 
-\item{start, end}{Define first and last day (YYYY-MM-DD) of the time period
-for which the presence of females will be determined}
+\item{start, end}{Define first and last day (YYYY-MM-DD) of the desired time period}
 
 \item{minAgeF}{The minimum age of females to be included (in years)}
 }

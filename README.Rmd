@@ -29,9 +29,9 @@ Filename: process-capuchin.data.R
 
 Functions:
   
-  - determine_presence
+- determine_presence
 - calc_effort_AB
-- dyadic_rates
+- calc_dyadic_rates
 - dyadic_rates_multi 
 - dyadic_rates_to_dsi
 - dsi_multi (try to integrate above)

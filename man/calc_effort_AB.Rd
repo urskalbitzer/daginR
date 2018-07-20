@@ -8,20 +8,17 @@ calc_effort_AB(focaldata, census_pace, biography_pace, group, start, end,
   minAgeF)
 }
 \arguments{
-\item{focaldata}{Dataset with focal data from capuchin monkeys}
+\item{focaldata}{Dataset with focaldata from capuchin monkeys}
 
 \item{census_pace}{Dataframe from the PACE database with monthly capuchin census data}
 
 \item{biography_pace}{Dataframe from the PACE database with individual biography data}
 
-\item{group}{The name of the social group for which the presence of females
-will be determined}
+\item{group}{Name of the social group}
 
-\item{start}{Define first and last day (YYYY-MM-DD) of the time period
-for which the presence of females will be determined}
+\item{start}{Define first and last day (YYYY-MM-DD) of the desired time period}
 
-\item{end}{Define first and last day (YYYY-MM-DD) of the time period
-for which the presence of females will be determined}
+\item{end}{Define first and last day (YYYY-MM-DD) of the desired time period}
 
 \item{minAgeF}{The minimum age of females to be included (in years)}
 }
