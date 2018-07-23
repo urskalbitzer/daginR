@@ -56,3 +56,6 @@ This function calculates rates of different behaviors for all female dyads
 meeting specific criteria (age, focal effort) within a specified group and
 time period (only works with one group and one time period at a time).
 }
+\examples{
+
+}

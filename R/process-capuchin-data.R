@@ -182,6 +182,7 @@ calc_effort_AB <- function (focaldata, census_pace, biography_pace, group, start
 #' @export
 #'
 #' @examples
+#'
 
 calc_dyadic_rates <- function (focaldata, census_pace, biography_pace,
                                group, start, end, minAgeF,
@@ -199,11 +200,15 @@ calc_dyadic_rates <- function (focaldata, census_pace, biography_pace,
   if(length(start)>1) stop("More than one start date")
   if(length(end)>1) stop("More than one end date")
 
-  # Only use focaldata from females that 1) have minAgeF, belong to group and within study-period
+  # Only use focaldata from females that
+  # 1) have minAgeF
+  # 2) belong to study group and
+  # 3) and is within study-period
   focaldata_temp <- focaldata %>%
     filter(AgeAtFocal > minAgeF) %>%
     filter (GroupCode == group) %>%
-    filter (FocalBegin >= as.Date (start) & FocalBegin <= as.Date (end)) %>%
+    filter (FocalBegin >= floor_date(as.Date(start), unit = "day") &
+              FocalBegin <= ceiling_date(as.Date(end), unit = "day")) %>%
     rename(IndA = NameOf, IndB = InteractNameOf)
 
   # Get focalhours per individual during study-period
@@ -324,4 +329,203 @@ calc_dyadic_rates <- function (focaldata, census_pace, biography_pace,
 
   return(output_4)
 
+}
+
+
+#' Calculate dyadic rates of interactions for several groups and years
+#'
+#' Based on \code{calc_dyadic_rates} but works for several groups and years.
+#' Thus, function calculates rates of interactions for all female dyads meeting
+#' specific criteria (age, focal effort) within each of the specified groups and
+#' years.
+#'
+#' @param groups Vector with all social groups to be included
+#' @param years Vector will all years to be included
+#' @inheritParams determine_presence
+#' @inheritParams calc_effort_AB
+#' @inheritParams calc_dyadic_rates
+#'
+#' @export
+#' @examples
+#'
+
+calc_dyadic_rates_mymg <- function(focaldata, census_pace, biography_pace,
+                                   groups, years, minAgeF,
+                                   behaviours_duration, behaviours_events,
+                                   minEffortDyad, minEffortInd, roles_included = c("D", "R", "M"),
+                                   dyads_summarized = TRUE) {
+
+    for (i in groups){
+      for (j in years){
+        print(paste(i, j, sep = " - "))
+        startend <- focaldata %>%
+          distinct(FocalID, .keep_all = TRUE) %>%
+          filter (AgeAtFocal >= minAgeF, year(FocalBegin) == j) %>%
+          arrange(FocalBegin) %>%
+          mutate(FocalBegin = as.character(paste0(year(FocalBegin), "-", month(FocalBegin), "-",
+                                                  day(FocalBegin)))) %>%
+          summarise(FirstFocal = first(FocalBegin), LastFocal = last(FocalBegin))
+
+        # Print message if no data from a group in a specific year, otherwise get dyadic rates table
+        if(nrow(focaldata %>% filter(as.Date(FocalBegin) >= as.Date(startend$FirstFocal) &
+                                     as.Date(FocalBegin) <= as.Date(startend$LastFocal) &
+                                     GroupCode == i)) == 0){
+          print(paste("no data from", i, "in", j, sep = " "))
+        } else {
+          temp <- calc_dyadic_rates (focaldata,
+                                     census_pace,
+                                     biography_pace,
+                                     group = i,
+                                     start = startend$FirstFocal,
+                                     end = startend$LastFocal,
+                                     minAgeF,
+                                     behaviours_duration,
+                                     behaviours_events,
+                                     minEffortDyad,
+                                     minEffortInd,
+                                     roles_included = c("D", "R", "M"),
+                                     dyads_summarized = TRUE)
+
+
+          if(!exists("dyadic_rates_multi")){
+            dyadic_rates_multi <- temp} else{
+              dyadic_rates_multi <- bind_rows(dyadic_rates_multi, temp)
+            }}}}
+    return(dyadic_rates_multi)
+  }
+
+#' Function calculates DSI from dyadic rates
+#'
+#' This functions uses the table with dyadic rates calculated by
+#' \code{calc_dyadic_rates} to calculate the Dyadic Sociality Index (DSI) for
+#' all dyads included in the dataset. Included behaviours and roles can be
+#' specified (as in \code{calc_dyadic_rates})
+#'
+#' @param dyadic_rates_table Table that was created by \code{calc_dyadic_rates}
+#' @param behaviours_included Vector with all behaviours to be included
+#' @inheritParams calc_dyadic_rates
+#'
+#' @export
+
+#' @examples
+#'
+
+dyadic_rates_to_dsi <- function (dyadic_rates_table,
+                                 behaviours_included,
+                                 roles_included = c("D", "R", "M")) {
+
+  # PREPARE DATASET
+  # Only keep the desired behaviors in the dyadic rates table
+  step_1 <- dyadic_rates_table %>%
+    filter(BehavName %in% behaviours_included)
+
+  # CHECKS
+  # All rates for same time period?
+  start_date <- unique(step_1$StartDate)
+  if(length(start_date)>1) stop("More than one start date")
+
+  end_date <- unique(step_1$EndDate)
+  if(length(end_date)>1) stop("More than one end date")
+
+  # Only one group included?
+  groups_unique <- unique(step_1$GroupCode)
+  if(length(groups_unique)>1) stop("More than one group in dataset")
+
+  # Any of the behaviors was never recorded?
+  max_rate <- aggregate(MeanRate_Dyad ~ BehavName, data = step_1, max)
+  behaviors_to_exclude = max_rate[max_rate$MeanRate_Dyad == 0,]$BehavName
+  if(any(max_rate$MeanRate_Dyad == 0)) warning (sprintf("%s was never recorded\n", behaviors_to_exclude))
+
+  # CONTINUE FILTERING
+  step_2 <- step_1 %>%
+    filter(!(BehavName %in% behaviors_to_exclude))
+
+  # START CALCULATION OF DSI
+  # Only keep roles_included and calculate sum of rates if behaviors_inlcuded >1
+  # (because e.g. directed approaches happen in addition to received approaches)
+
+  step_3 <- step_2 %>%
+    filter(Role %in% roles_included) %>%
+    group_by(BehavName, Dyad) %>%
+    summarize(Rate_Dyad_AllRoles = sum(MeanRate_Dyad)) %>%
+    ungroup()
+
+  # also check roles that are actually present in the dataset
+  roles_recorded <- unique(step_2$Role)[unique(step_2$Role) %in% roles_included]
+
+  # Because DSI considers behavioral rate relative to group rate, calculate group rates
+  step_4 <- step_3 %>%
+    group_by (BehavName) %>%
+    mutate (MeanRate_Group = mean (Rate_Dyad_AllRoles)) %>%
+    mutate (RelativeRate_Dyad = Rate_Dyad_AllRoles / MeanRate_Group) %>%
+    ungroup()
+
+  # Then calculate the DSI =
+  step_5 <- step_4 %>%
+    group_by(Dyad) %>%
+    summarise(DSI = sum(RelativeRate_Dyad)/n(),
+              Number_behaviours = n()) %>%
+    ungroup()
+
+  # Then add Year, GroupCode, Roles, StartDate, EndDate, BehaviorNames to dataframe
+  dsi_df <- step_5 %>%
+    mutate (Behaviours_in_DSI = paste(behaviours_included, collapse = ", "),
+            GroupCode = groups_unique, Year = year(start_date),
+            StartDate = start_date, EndDate = end_date,
+            GroupCode = groups_unique,
+            Roles_included  = paste(roles_included, collapse = ", "),
+            Roles_recorded  = paste(roles_recorded, collapse = ", ")) %>%
+    select(GroupCode, Year, Dyad, DSI,
+           StartDate, EndDate, Number_behaviours,
+           Behaviours_in_DSI, Roles_recorded, Roles_included)
+
+  return (dsi_df)
+}
+
+#' Function calculates DSI from dyadic rates for several groups and years
+#'
+#' As \code{dyadic_rates_to_dsi}, this function calculates the Dyadic Sociality
+#' Index (DSI) for all dyads included in the dataset based on dyadic interaction
+#' rates. However, this function uses the table with dyadic rates from multiple
+#' groups and years calculated by \code{calc_dyadic_rates_mymg} instead of the
+#' table with a single group from a single year.
+#'
+#' @param dyadic_rates_table_mymg Table that was created by
+#'   \code{calc_dyadic_rates_mymg}
+#' @inheritParams dyadic_rates_to_dsi
+#' @inheritParams calc_dyadic_rates
+#'
+#' @export
+#'
+#' @examples
+#'
+
+dyadic_rates_to_dsi_mymg <- function(dyadic_rates_table_mymg,
+                                     behaviours_included,
+                                     roles_included = c("D", "R", "M")) {
+
+  groups <- unique(dyadic_rates_table_mymg$GroupCode)
+  years <- unique(dyadic_rates_table_mymg$YearOf)
+
+  for (i in groups){
+    for (j in years){
+      print(paste(i, j, sep = " - "))
+      temp_dyadic_rates <- dyadic_rates_table_mymg %>%
+        filter(GroupCode == i &
+                 YearOf == j)
+
+      # Print message if no data from a group in a specific year,
+      # otherwise calculate DSI
+      if(nrow(temp_dyadic_rates) == 0){
+        print(paste("no data from", i, "in", j, sep = " "))
+      } else {
+        temp <- dyadic_rates_to_dsi(temp_dyadic_rates,
+                                    behaviours_included,
+                                    roles_included = c("D", "R", "M"))
+
+        if(!exists("dsi_multi")){
+          dsi_multi <- temp} else{
+            dsi_multi <- bind_rows(dsi_multi, temp)
+          }}}}
+  return(dsi_multi)
 }

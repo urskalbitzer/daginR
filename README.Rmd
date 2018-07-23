@@ -20,7 +20,7 @@ A Package to process behavioral data from capuchins and red colobus, and to cond
 ### Parts
 The package consists of three parts:
   
-  1. Process various types of data (focal, census, etc.) from capuchins
+1. Process various types of data (focal, census, etc.) from capuchins
 2. Process various types of data (scan, demography, etc.) from red colobus
 3. Calculate social network parameters
 
@@ -32,8 +32,8 @@ Functions:
 - determine_presence
 - calc_effort_AB
 - calc_dyadic_rates
-- dyadic_rates_multi 
-- dyadic_rates_to_dsi
+- calc_dyadic_rates_mymg (for multiple years and multiple groupgs)
+- dydic_rates_to_dsi_mymg
 - dsi_multi (try to integrate above)
 - dsi_topn (necessary?)
 
