@@ -312,12 +312,12 @@ calc_dyadic_rates <- function (focaldata, census_pace, biography_pace,
       mutate(effort_sum_AB_BA = sum(Effort_AB),
              MeanRate_Dyad = mean (Rate)) %>%
       ungroup %>%
-      select(Dyad, BehavName, GroupCode, Role, YearOf, MeanRate_Dyad) %>%
+      select(Dyad, IndA, IndB, BehavName, GroupCode, Role, YearOf, MeanRate_Dyad) %>%
       # mutate(MeanRate_Dyad = round(MeanRate_Dyad, 3)) %>%
       distinct(Dyad, BehavName, Role, .keep_all = TRUE)
   }else{
     output_3 <- output_2 %>%
-      select(Dyad, IndA, IndB, BehavName, GroupCode, Year, Role, Absolute,
+      select(Dyad, IndA, IndB, BehavName, GroupCode, YearOf, Role, Absolute,
              Effort_AB, Rate)
     # mutate(Absolute = round(Absolute, 5),
     #        Effort_AB = round(Effort_AB, 2),
@@ -467,15 +467,16 @@ dyadic_rates_to_dsi <- function (dyadic_rates_table,
               Number_behaviours = n()) %>%
     ungroup()
 
-  # Then add Year, GroupCode, Roles, StartDate, EndDate, BehaviorNames to dataframe
+  # Then add YearOf, GroupCode, Roles, StartDate, EndDate, BehaviorNames to dataframe
   dsi_df <- step_5 %>%
     mutate (Behaviours_in_DSI = paste(behaviours_included, collapse = ", "),
-            GroupCode = groups_unique, Year = year(start_date),
+            GroupCode = groups_unique, YearOf = year(start_date),
             StartDate = start_date, EndDate = end_date,
             GroupCode = groups_unique,
             Roles_included  = paste(roles_included, collapse = ", "),
             Roles_recorded  = paste(roles_recorded, collapse = ", ")) %>%
-    select(GroupCode, Year, Dyad, DSI,
+    separate(Dyad, into = c("IndA", "IndB"), sep = "_", remove = FALSE) %>%
+    select(GroupCode, YearOf, Dyad, IndA, IndB, DSI,
            StartDate, EndDate, Number_behaviours,
            Behaviours_in_DSI, Roles_recorded, Roles_included)
 

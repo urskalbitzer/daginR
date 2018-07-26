@@ -32,9 +32,9 @@ Functions:
 - determine_presence
 - calc_effort_AB
 - calc_dyadic_rates
-- calc_dyadic_rates_mymg (for multiple years and multiple groupgs)
-- dydic_rates_to_dsi_mymg
-- dsi_multi (try to integrate above)
+- calc_dyadic_rates_mymg (for multiple years and multiple groups)
+- dydic_rates_to_dsi
+- dydic_rates_to_dsi_mymg (for multiple years and multiple groups)
 - dsi_topn (necessary?)
 
 ## Example
