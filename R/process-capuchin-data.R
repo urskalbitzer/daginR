@@ -530,3 +530,61 @@ dyadic_rates_to_dsi_mymg <- function(dyadic_rates_table_mymg,
           }}}}
   return(dsi_multi)
 }
+
+
+
+
+
+
+
+#' Averages the DSI over the top n partners
+#'
+#' Averages for entire study period over all groups or per group and per year if specified
+#'
+#' @param dsi_table Table with DSI values for dyads of IndA and IndB
+#' @param slots Set the number of top partners to be included
+#' @param group_true Set to TRUE, if the DSI should be averaged per group.
+#'   Default is FALSE in case no GroupCode-column is provided. Make sure that
+#'   column GroupCode exists when set to TRUE.
+#' @param year_true Set to TRUE, if the DSI should be averaged per year. Default
+#'   is FALSE in case no Year-column is provided (I also believe this is what
+#'   Silk et al. did in their publications). Make sure that column YearOf exists
+#'   when set to TRUE.
+#' @param dsi_column Specify how the DSI column is labelled. Default is "weight"
+#'   as for the Social Network Parameter calculation
+#'
+#' @export
+#' @examples
+#'
+#'
+
+calc_dsi_topn <- function(dsi_table, slots = 3, group_true = FALSE, year_true = FALSE, dsi_column = "DSI"){
+
+  # Create group_year_columns, which will be used to calculate the topn-value per year and group
+  group_year_columns <- NULL
+  if(group_true) group_year_columns <- "GroupCode"
+  if(year_true) group_year_columns <- c("YearOf", group_year_columns)
+
+  # Copy all dyads to that IndA = IndB.
+  # This is necessary so that individual as once listed as IndA with each partner as IndB and vice versa
+  dsi_table_full <- dsi_table %>%
+    rename(IndA = IndB, IndB = IndA) %>%
+    select_(.dots = c(group_year_columns, "IndA", "IndB", dsi_column)) %>%
+    bind_rows(., select_(dsi_table, .dots = c(group_year_columns, "IndA", "IndB", dsi_column)))
+
+  # Create list with grouping variables
+  # include GroupCode and YearOf if dsi values should be calculated annualy and per group
+  vars_to_group <- c(group_year_columns, "IndA")
+  vars_to_sort <- c(vars_to_group, dsi_column)
+
+  dsi_topn <- dsi_table_full %>%
+    arrange_at(vars(vars_to_sort), funs(desc(.))) %>%
+    group_by_at(vars(vars_to_group)) %>%
+    filter(row_number() <= slots) %>%
+    summarise_at(dsi_column, funs(SI_topn = mean)) %>%
+    mutate(GroupedBy = paste(vars_to_group, collapse = ", ")) %>%
+    ungroup %>%
+    rename(Ind = IndA)
+
+  return(dsi_topn)
+}

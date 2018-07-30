@@ -25,7 +25,7 @@ The package consists of three parts:
 3. Calculate social network parameters
 
 ### 1. Process capuchin data
-Filename: process-capuchin.data.R  
+Filename: process-capuchin-data.R  
 
 Functions:
   
@@ -35,7 +35,17 @@ Functions:
 - calc_dyadic_rates_mymg (for multiple years and multiple groups)
 - dydic_rates_to_dsi
 - dydic_rates_to_dsi_mymg (for multiple years and multiple groups)
-- dsi_topn (necessary?)
+- calc_dsi_topn
+
+### 2. Process red colobus data
+
+### 3. Calculate social network parameters
+Filename: calculate-sna-pars.R
+
+Functions
+- calc_sna_pars
+- calc_sna_pars_mymg (for multiple years and multiple groups)
+
 
 ## Example
 
