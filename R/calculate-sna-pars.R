@@ -37,18 +37,36 @@ calc_sna_pars <- function(edge_table, indA_col = "IndA", indB_col = "IndB", weig
   vertex_strength <- igraph::strength(net.pos, weights = net.weights)
   # Use inverse of weights because in igraph, weights are considered as costs
   vertex_betweenness <- igraph::betweenness(net.pos, directed = FALSE, weights = 1 / net.weights)
-  vertex_centrality <- igraph::eigen_centrality(net.pos, directed = FALSE, scale = TRUE, weights = net.weights)
+  vertex_centrality <- igraph::eigen_centrality(net.pos, directed = FALSE, scale = FALSE, weights = net.weights)
   # Use "weigted" for transitivity because "local" assumes weight of 1 for all edges
   vertex_cc <- igraph::transitivity(net.pos, type = "weighted", vids = net.vertices, weights = net.weights)
 
-  # Reach function-code taken from: http://www.shizukalab.com/toolkits/sna/node-level-calculations
-  dwreach = function(x){
-    distances = igraph::shortest.paths(x) # create matrix of geodesic distances
-    diag(distances) = 1 # replace the diagonal with 1s
-    weights = 1 / distances # take the reciprocal of distances
-    apply(weights, 1, sum) # sum for each node (row)
+  ## OLD FUNCTION HERE. BETTER USE reach FROM CePa below.
+  ## Reach function-code taken from: http://www.shizukalab.com/toolkits/sna/node-level-calculations
+  # dwreach = function(x){
+  #   distances = igraph::shortest.paths(x) # create matrix of geodesic distances
+  #   diag(distances) = 1 # replace the diagonal with 1s
+  #   weights = 1 / distances # take the reciprocal of distances
+  #   apply(weights, 1, sum) # sum for each node (row)
+  # }
+  # vertex_reach <- dwreach(net.pos)
+
+  # `reach` function from the CePa package:
+  # https://github.com/jokergoo/CePa
+  reach <-  function(graph, weights = igraph::E(graph)$weight, mode=c("all", "in", "out")) {
+    mode = match.arg(mode)[1]
+    sp = igraph::shortest.paths(graph, weights = weights, mode = mode)
+    s = apply(sp, 1, function(x) {
+      if(all(x == Inf)) {
+        return(0)
+      }
+      else {
+        return(max(x[x != Inf]))
+      }
+    })
+    return(s)
   }
-  vertex_reach <- dwreach(net.pos)
+  vertex_reach <- reach(graph = net.pos, weights = (1/net.weights))
 
   # Create dataframes for each parameter to make joining command easier to read
   vertex_strength_df <- data_frame(Ind = names(vertex_strength), strength = vertex_strength)
@@ -110,5 +128,31 @@ calc_sna_pars_mymg <- function(edge_table, indA_col = "IndA", indB_col = "IndB",
 return(sna_par_df)
 }
 
+# `reach` function from the CePa package:
+# https://github.com/jokergoo/CePa
+#
+# The largest reach centrality is calculated as ``max(d(w, v))`` where ``d(w, v)`` is the
+# length of the shortest path from node ``w`` to node ``v``.
+#
+# == author
+# Zuguang Gu <z.gu@dkfz.de>
+#
+# == example
+# require(igraph)
+# pathway = barabasi.game(200)
+# reach(pathway)
+reach = function(graph, weights=E(graph)$weight, mode=c("all", "in", "out")) {
+  mode = match.arg(mode)[1]
 
+  sp = shortest.paths(graph, weights = weights, mode = mode)
+  s = apply(sp, 1, function(x) {
+    if(all(x == Inf)) {
+      return(0)
+    }
+    else {
+      return(max(x[x != Inf]))
+    }
+  })
+  return(s)
+}
 
