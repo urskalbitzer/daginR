@@ -4,8 +4,8 @@
 \alias{calc_dsi_topn}
 \title{Averages the DSI over the top n partners}
 \usage{
-calc_dsi_topn(dsi_table, slots = 3, group_true = FALSE, year_true = FALSE,
-  dsi_column = "DSI")
+calc_dsi_topn(dsi_table, slots = 3, group_true = FALSE,
+  year_true = FALSE, dsi_column = "DSI")
 }
 \arguments{
 \item{dsi_table}{Table with DSI values for dyads of IndA and IndB}

@@ -4,9 +4,10 @@
 \alias{calc_dyadic_rates_mymg}
 \title{Calculate dyadic rates of interactions for several groups and years}
 \usage{
-calc_dyadic_rates_mymg(focaldata, census_pace, biography_pace, groups, years,
-  minAgeF, behaviours_duration, behaviours_events, minEffortDyad, minEffortInd,
-  roles_included = c("D", "R", "M"), dyads_summarized = TRUE)
+calc_dyadic_rates_mymg(focaldata, census_pace, biography_pace, groups,
+  years, minAgeF, behaviours_duration, behaviours_events, minEffortDyad,
+  minEffortInd, roles_included = c("D", "R", "M"),
+  dyads_summarized = TRUE)
 }
 \arguments{
 \item{focaldata}{Dataset with focaldata from capuchin monkeys}

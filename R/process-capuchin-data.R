@@ -269,7 +269,10 @@ calc_dyadic_rates <- function (focaldata, census_pace, biography_pace,
     mutate(AllRoles = rowSums(.[roles])) %>%
     gather_ ("Role", "Absolute", c(roles, "AllRoles")) %>%
     mutate(Role = if_else(Role == "AllRoles", paste(roles, collapse = "_"), Role)) %>%
-    filter(!is.na(IndA) & !is.na(IndB))
+    filter(!is.na(IndA) & !is.na(IndB)) %>%
+    distinct(IndA, IndB, BehavName, Role, GroupCode, .keep_all = TRUE)
+  # The last line prevents having two identical rows if there's only one role
+  # In that case, AllRoles is identical to that unique role
 
   # Calculate rates for each behavior and dyad
   # This requires the effort for each IndA while IndB was present to correct for coresidence
@@ -383,8 +386,8 @@ calc_dyadic_rates_mymg <- function(focaldata, census_pace, biography_pace,
                                      behaviours_events,
                                      minEffortDyad,
                                      minEffortInd,
-                                     roles_included = c("D", "R", "M"),
-                                     dyads_summarized = TRUE)
+                                     roles_included = roles_included,
+                                     dyads_summarized = dyads_summarized)
 
 
           if(!exists("dyadic_rates_multi")){
@@ -522,7 +525,7 @@ dyadic_rates_to_dsi_mymg <- function(dyadic_rates_table_mymg,
       } else {
         temp <- dyadic_rates_to_dsi(temp_dyadic_rates,
                                     behaviours_included,
-                                    roles_included = c("D", "R", "M"))
+                                    roles_included = roles_included)
 
         if(!exists("dsi_multi")){
           dsi_multi <- temp} else{

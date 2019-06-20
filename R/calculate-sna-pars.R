@@ -12,7 +12,7 @@
 #' @examples
 #'
 
-calc_sna_pars <- function(edge_table, indA_col = "IndA", indB_col = "IndB", weight_col = "DSI") {
+calc_sna_pars_dyad <- function(edge_table, indA_col = "IndA", indB_col = "IndB", weight_col = "DSI") {
   df <- edge_table[,c(indA_col, indB_col)]
   df$weight <- edge_table[,weight_col][[1]]
 
@@ -40,33 +40,7 @@ calc_sna_pars <- function(edge_table, indA_col = "IndA", indB_col = "IndB", weig
   vertex_centrality <- igraph::eigen_centrality(net.pos, directed = FALSE, scale = FALSE, weights = net.weights)
   # Use "weigted" for transitivity because "local" assumes weight of 1 for all edges
   vertex_cc <- igraph::transitivity(net.pos, type = "weighted", vids = net.vertices, weights = net.weights)
-
-  ## OLD FUNCTION HERE. BETTER USE reach FROM CePa below.
-  ## Reach function-code taken from: http://www.shizukalab.com/toolkits/sna/node-level-calculations
-  # dwreach = function(x){
-  #   distances = igraph::shortest.paths(x) # create matrix of geodesic distances
-  #   diag(distances) = 1 # replace the diagonal with 1s
-  #   weights = 1 / distances # take the reciprocal of distances
-  #   apply(weights, 1, sum) # sum for each node (row)
-  # }
-  # vertex_reach <- dwreach(net.pos)
-
-  # `reach` function from the CePa package:
-  # https://github.com/jokergoo/CePa
-  reach <-  function(graph, weights = igraph::E(graph)$weight, mode=c("all", "in", "out")) {
-    mode = match.arg(mode)[1]
-    sp = igraph::shortest.paths(graph, weights = weights, mode = mode)
-    s = apply(sp, 1, function(x) {
-      if(all(x == Inf)) {
-        return(0)
-      }
-      else {
-        return(max(x[x != Inf]))
-      }
-    })
-    return(s)
-  }
-  vertex_reach <- reach(graph = net.pos, weights = (1/net.weights))
+  vertex_reach <- reach(graph = net.pos, weights = (1/net.weights)) # reach function from CePa (see below)
 
   # Create dataframes for each parameter to make joining command easier to read
   vertex_strength_df <- data_frame(Ind = names(vertex_strength), strength = vertex_strength)
@@ -85,7 +59,6 @@ calc_sna_pars <- function(edge_table, indA_col = "IndA", indB_col = "IndB", weig
   return(network_df)
 }
 
-
 #' Calculate various individual social network parameters based on DSI values
 #' for multiple years and groups
 #'
@@ -95,14 +68,14 @@ calc_sna_pars <- function(edge_table, indA_col = "IndA", indB_col = "IndB", weig
 #'
 #' @param edge_table Table with two individual and one weight column. Also
 #'   requires columns "GroupCode" and "YearOf" or will fail.
-#' @inheritParams calc_sna_pars
+#' @inheritParams calc_sna_pars_dyad
 #'
 #' @export
 #'
 #' @examples
 #'
 
-calc_sna_pars_mymg <- function(edge_table, indA_col = "IndA", indB_col = "IndB", weight_col = "DSI") {
+calc_sna_pars_dyad_mymg <- function(edge_table, indA_col = "IndA", indB_col = "IndB", weight_col = "DSI") {
 
   groups <- unique(edge_table$GroupCode)
   years <- unique(edge_table$YearOf)
@@ -115,7 +88,7 @@ calc_sna_pars_mymg <- function(edge_table, indA_col = "IndA", indB_col = "IndB",
     for(j in years){
       temp_df <- edge_table[edge_table$GroupCode == i & edge_table$YearOf == j, ]
       if(nrow(temp_df) == 0) next
-      sna_par_df_temp <- calc_sna_pars(temp_df)
+      sna_par_df_temp <- calc_sna_pars_dyad(temp_df)
       sna_par_df_temp$GroupCode <- i
       sna_par_df_temp$YearOf <- j
       if(exists("sna_par_df")){
@@ -141,10 +114,10 @@ return(sna_par_df)
 # require(igraph)
 # pathway = barabasi.game(200)
 # reach(pathway)
-reach = function(graph, weights=E(graph)$weight, mode=c("all", "in", "out")) {
+reach <-  function(graph, weights = igraph::E(graph)$weight, mode=c("all", "in", "out")) {
   mode = match.arg(mode)[1]
 
-  sp = shortest.paths(graph, weights = weights, mode = mode)
+  sp = igraph::shortest.paths(graph, weights = weights, mode = mode)
   s = apply(sp, 1, function(x) {
     if(all(x == Inf)) {
       return(0)
@@ -154,5 +127,78 @@ reach = function(graph, weights=E(graph)$weight, mode=c("all", "in", "out")) {
     }
   })
   return(s)
+}
+
+
+
+#' Calculate individual strength
+#'
+#' Determines Strength
+#'
+#' @param rate_table Table with two individual ("IndA", "IndB") and one "Rate" column. Each dyad
+#'   should be listed twice (once in each direction)
+#'
+#' @export
+#'
+#' @examples
+#'
+
+get_strength_from_rates <- function(rate_table){
+  df <- select(rate_table, from = IndA, to = IndB, weight = Rate)
+  inds <- unique(c(df$from, df$to))
+
+  net <- igraph::graph_from_data_frame(d = df, vertices = inds, directed = T)
+
+  # remove edges with no weight
+  net.pos <- net - igraph::E(net)[igraph::E(net)$weight == 0]
+  net.weights <- igraph::E(net.pos)$weight
+  net.vertices <- igraph::V(net.pos)
+
+  # To calculate strength, use "out". The 'rate' indicates how much each individual received/gave.
+  vertex_strength <- igraph::strength(net.pos,
+                                      weights = net.weights,
+                                      mode = "out")
+
+  return(tibble(Ind = names(vertex_strength), strength = vertex_strength))
+}
+
+
+#' Calculate individual strength for multiple years and groups
+#'
+#' Determines Strength
+#' Works with several groups and years
+#'
+#' @param rate_table Table with two individual ("IndA", "IndB") and one "Rate" column. Each dyad
+#'   should be listed twice (once in each direction) per year. Also requires columns "GroupCode" and "YearOf" or will fail.
+#'
+#' @inheritParams get_strength_from_rates
+#'
+#' @export
+#'
+#' @examples
+#'
+get_strength_from_rates_mymg <- function(rate_table){
+  groups <- unique(rate_table$GroupCode)
+  years <- unique(rate_table$YearOf)
+
+  # Make sure that strength_df doesn't exist in the local environment (can probably be removed)
+  if(exists("strength_par_df")) rm(strength_par_df)
+
+  # Then, calculate sna parameters separately for each year and group
+  for(i in groups){
+    for(j in years){
+      temp_df <- rate_table[rate_table$GroupCode == i & rate_table$YearOf == j, ]
+      if(nrow(temp_df) == 0) next
+      strength_df_temp <- get_strength_from_rates(temp_df)
+      strength_df_temp$GroupCode <- i
+      strength_df_temp$YearOf <- j
+      if(exists("strength_df")){
+        strength_df <- bind_rows(strength_df, strength_df_temp)
+        print(paste(i, j, sep = " - ", " added to df"))
+      } else {
+        strength_df <- strength_df_temp
+        print(paste(i, j, sep = " - ", " used to create df"))
+      }}}
+  return(strength_df)
 }
 
