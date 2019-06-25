@@ -93,10 +93,10 @@ calc_sna_pars_dyad_mymg <- function(edge_table, indA_col = "IndA", indB_col = "I
       sna_par_df_temp$YearOf <- j
       if(exists("sna_par_df")){
         sna_par_df <- bind_rows(sna_par_df, sna_par_df_temp)
-        print(paste(i, j, sep = " - ", " added to df"))
+        message(paste(i, j, sep = " - ", " added to df"))
       } else {
         sna_par_df <- sna_par_df_temp
-        print(paste(i, j, sep = " - ", " used to create df"))
+        message(paste(i, j, sep = " - ", " used to create df"))
       }}}
 return(sna_par_df)
 }
@@ -194,10 +194,10 @@ get_strength_from_rates_mymg <- function(rate_table){
       strength_df_temp$YearOf <- j
       if(exists("strength_df")){
         strength_df <- bind_rows(strength_df, strength_df_temp)
-        print(paste(i, j, sep = " - ", " added to df"))
+        message(paste(i, j, sep = " - ", " added to df"))
       } else {
         strength_df <- strength_df_temp
-        print(paste(i, j, sep = " - ", " used to create df"))
+        message(paste(i, j, sep = " - ", " used to create df"))
       }}}
   return(strength_df)
 }

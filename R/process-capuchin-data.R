@@ -302,7 +302,7 @@ calc_dyadic_rates <- function (focaldata, census_pace, biography_pace,
     mutate(Effort_sum_AB_BA = sum(Effort_AB)) %>%
     filter(IndA_Effort < minEffortInd | IndB_Effort < minEffortInd | Effort_sum_AB_BA < minEffortDyad)
   # 2. Message
-  if(nrow(dyads_to_filter_out) > 0) print(paste("The following dyad has been sorted out (not enough data):", dyads_to_filter_out$Dyad))
+  if(nrow(dyads_to_filter_out) > 0) message(paste("The following dyad has been sorted out (not enough data):", dyads_to_filter_out$Dyad))
 
   # 3. Filter
   output_2 <- filter(output_1, !(Dyad %in% dyads_to_filter_out$Dyad))
@@ -360,7 +360,7 @@ calc_dyadic_rates_mymg <- function(focaldata, census_pace, biography_pace,
 
     for (i in groups){
       for (j in years){
-        print(paste(i, j, sep = " - "))
+        message(paste(i, j, sep = " - "))
         startend <- focaldata %>%
           distinct(FocalID, .keep_all = TRUE) %>%
           filter (AgeAtFocal >= minAgeF, year(FocalBegin) == j) %>%
@@ -373,7 +373,7 @@ calc_dyadic_rates_mymg <- function(focaldata, census_pace, biography_pace,
         if(nrow(focaldata %>% filter(as.Date(FocalBegin) >= as.Date(startend$FirstFocal) &
                                      as.Date(FocalBegin) <= as.Date(startend$LastFocal) &
                                      GroupCode == i)) == 0){
-          print(paste("no data from", i, "in", j, sep = " "))
+          message(paste("no data from", i, "in", j, sep = " "))
         } else {
           temp <- calc_dyadic_rates (focaldata,
                                      census_pace,
@@ -513,7 +513,7 @@ dyadic_rates_to_dsi_mymg <- function(dyadic_rates_table_mymg,
 
   for (i in groups){
     for (j in years){
-      print(paste(i, j, sep = " - "))
+      message(paste(i, j, sep = " - "))
       temp_dyadic_rates <- dyadic_rates_table_mymg %>%
         filter(GroupCode == i &
                  YearOf == j)
@@ -521,7 +521,7 @@ dyadic_rates_to_dsi_mymg <- function(dyadic_rates_table_mymg,
       # Print message if no data from a group in a specific year,
       # otherwise calculate DSI
       if(nrow(temp_dyadic_rates) == 0){
-        print(paste("no data from", i, "in", j, sep = " "))
+        message(paste("no data from", i, "in", j, sep = " "))
       } else {
         temp <- dyadic_rates_to_dsi(temp_dyadic_rates,
                                     behaviours_included,
