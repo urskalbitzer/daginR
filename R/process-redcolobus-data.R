@@ -178,7 +178,7 @@ create_age_sex_codes <- function(link_table){
 #' @param scandata_df Data frame with red colobus scan data
 #' @param first_month_adult_df Dataframe with first-month-adult dates
 #' @param from_date,to_date Start and end date of analyzed period of time.
-#'   Format should be "yyyy-mm-dd"
+#'   Format should be "yyyy-mm-dd". Includes both first and last day.
 #' @param id_sex_df Table with sex of individuals. This is the link table creates with `create_link_table`
 #' @param max_nn_dist The maximum distance for which an individual is still considered NN. Default is 5
 #'
@@ -272,6 +272,9 @@ get_dyadic_association_rc <- function(scan_data_df, first_month_adult_df, id_sex
   dyad_summaries <- dyad_summaries %>%
     left_join(select(id_sex_df, Individual = Name, Ind_Sex = Sex), by = "Individual") %>%
     left_join(select(id_sex_df, NN = Name, NN_Sex = Sex), by = "NN")
+
+  dyad_summaries <- dyad_summaries %>%
+    ungroup
 
   return(dyad_summaries)
 
