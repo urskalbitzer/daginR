@@ -40,7 +40,9 @@ calc_sna_pars_dyad <- function(edge_table, indA_col = "IndA", indB_col = "IndB",
   vertex_centrality <- igraph::eigen_centrality(net.pos, directed = FALSE, scale = FALSE, weights = net.weights)
   # Use "weigted" for transitivity because "local" assumes weight of 1 for all edges
   vertex_cc <- igraph::transitivity(net.pos, type = "weighted", vids = net.vertices, weights = net.weights)
-  vertex_reach <- reach(graph = net.pos, weights = (1/net.weights)) # reach function from CePa (see below)
+  # For reach, use function from CePa (see below)
+  # and use inverse because low reach means max(shortest.path) is small --> high reach
+  vertex_reach <- 1/reach(graph = net.pos, weights = (1/net.weights))
 
   # Create dataframes for each parameter to make joining command easier to read
   vertex_strength_df <- data_frame(Ind = names(vertex_strength), strength = vertex_strength)
