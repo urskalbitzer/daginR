@@ -2,31 +2,55 @@
 % Please edit documentation in R/process-redcolobus-data.R
 \name{get_dyadic_association_rc}
 \alias{get_dyadic_association_rc}
-\title{Count number of scans for a period with Individual while it is present and adult
-Then count for each other Individual number of times it was Nearest Neighbour (NN) or could have
-been NN while adult and present in group}
+\title{For each dyad, this function counts the number of times and Individual A was
+recorded as Individual while Individual A and B were both adult and present (`Ind_NN_Present`).
+Then, it calculates how often Individual B was recorded as the Nearest
+Neighbour (NN) of Individual A for this time period (where both were adult
+and present; `Ind_NN_together`)}
 \usage{
-get_dyadic_association_rc(scan_data_df, first_month_adult_df, id_sex_df,
-  from_date, to_date, max_nn_dist = 5)
+get_dyadic_association_rc(scandata_df, id_sex_df, presence_df,
+  max_nn_dist = 5, n_permutations = 0,
+  ind_sex_permutation = c("Male", "Female"),
+  nn_sex_permutation = c("Male", "Female"), n_iter_per_permutation = 1,
+  ...)
 }
 \arguments{
-\item{first_month_adult_df}{Dataframe with first-month-adult dates}
-
-\item{id_sex_df}{Table with sex of individuals. This is the link table creates with `create_link_table`}
-
-\item{from_date, to_date}{Start and end date of analyzed period of time.
-Format should be "yyyy-mm-dd"}
-
-\item{max_nn_dist}{The maximum distance for which an individual is still considered NN. Default is 5}
-
 \item{scandata_df}{Data frame with red colobus scan data}
+
+\item{id_sex_df}{Table with sex of individuals. This is the link table
+creates with `create_link_table`}
+
+\item{presence_df}{Dataframe created with `get_presence_rc`}
+
+\item{max_nn_dist}{The maximum distance for which an individual is still
+considered NN. Default is 5 (m)}
+
+\item{n_permutations}{How many permutations should be conducted?}
+
+\item{ind_sex_permutation}{default `c("Male", "Female")`}
+
+\item{nn_sex_permutation}{default `c("Male", "Female")`}
+
+\item{n_iter_per_permutation}{Number of iterations ('NN swaps') per
+permutation}
 }
 \description{
-Count number of scans for a period with Individual while it is present and adult
-Then count for each other Individual number of times it was Nearest Neighbour (NN) or could have
-been NN while adult and present in group
+Furthermore, this function does pre-network data permutations `n_permutation`
+times (0 for no permutations) using the function `permute_scan_data`. For each permutation,
+`n_iter_per_permutation` NNs are swapped.
+}
+\details{
+The results are provided as 4-dimensional array:
+Dimension 1 and 2 are the different individuals (i.e. dyad matrix)
+Dimension 3 is the permutation number (starting with 0, the original data)
+Dimension 4 is type of count (Ind_NN_Present, Ind_NN_together)
+
+Limitations: This function cannot (yet) permute only within sex classes. To
+achieve that, subset scandata and only include females or males before
+running the function. Set `ind_sex_permutation` and `nn_sex_permutation` to
+"Male"/"Female" respectively (although this should be working with default
+arguments)
 }
 \examples{
-
 
 }
