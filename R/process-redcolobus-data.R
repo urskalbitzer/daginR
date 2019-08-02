@@ -268,25 +268,25 @@ prep_rc_scandata_for_associations <- function(scandata_df,
 
 
 #' For each dyad, this function counts the number of times and Individual A was
-#' recorded as Individual while Individual A and B were both adult and present (`Ind_NN_Present`).
-#' Then, it calculates how often Individual B was recorded as the Nearest
-#' Neighbour (NN) of Individual A for this time period (where both were adult
-#' and present; `Ind_NN_together`)
+#' recorded as Individual while Individual A and B were both adult and present
+#' (`Ind_NN_Present`). Then, it calculates how often Individual B was recorded
+#' as the Nearest Neighbour (NN) of Individual A for this time period (where
+#' both were adult and present; `Ind_NN_together`)
 #'
 #' Furthermore, this function does pre-network data permutations `n_permutation`
-#' times (0 for no permutations) using the function `permute_scan_data`. For each permutation,
-#' `n_iter_per_permutation` NNs are swapped.
+#' times (0 for no permutations) using the function `permute_scan_data`. For
+#' each permutation, `n_iter_per_permutation` NNs are swapped.
 #'
-#' The results are provided as 4-dimensional array:
+#' The results are provided as 3-dimensional array:
 #' Dimension 1 and 2 are the different individuals (i.e. dyad matrix)
-#' Dimension 3 is the permutation number (starting with 0, the original data)
-#' Dimension 4 is type of count (Ind_NN_Present, Ind_NN_together)
+#' Dimension 3 is data. i = 1: Ind_NN_Present; i = 2: Ind_NN_Together;
+#' 3 - n_permutations: Permutations of Ind_NN_Together
 #'
-#' Limitations: This function cannot (yet) permute only within sex classes. To
-#' achieve that, subset scandata and only include females or males before
-#' running the function. Set `ind_sex_permutation` and `nn_sex_permutation` to
-#' "Male"/"Female" respectively (although this should be working with default
-#' arguments)
+#' Limitations: This function cannot (yet) permute only within
+#' sex classes. To achieve that, subset scandata and only include females or
+#' males before running the function. Set `ind_sex_permutation` and
+#' `nn_sex_permutation` to "Male"/"Female" respectively (although this should be
+#' working with default arguments)
 #'
 #' @param scandata_df Data frame with red colobus scan data
 #' @param id_sex_df Table with sex of individuals. This is the link table
@@ -313,8 +313,6 @@ get_dyadic_association_rc <- function(scandata_df,
                                       n_iter_per_permutation = 1, ...){
   # TO DO:
   # 1. Include argument checks (including checks of provided data)
-  # 2. Make more efficient: Number of observations per individuals
-  # don't change and have to be calculated only once.
 
   # Setup dataframe with all dyads (both directions) per month and information on adult-presence and sex
   Names <- union(unique(scandata_df$Individual), unique(scandata_df$NN))
@@ -323,33 +321,64 @@ get_dyadic_association_rc <- function(scandata_df,
   dyad_table <- expand_grid(IndA = Names, IndB = Names,
                             nesting(YearOf, MonthOf)) %>%
     filter(IndA != IndB) %>%
-    left_join(rename(presence, IndA_Adult = Present_As_Adult),
+    left_join(rename(presence_df, IndA_Adult = Present_As_Adult),
               by = c("IndA" = "Name", "YearOf", "MonthOf")) %>%
-    left_join(rename(presence, IndB_Adult = Present_As_Adult),
+    left_join(rename(presence_df, IndB_Adult = Present_As_Adult),
               by = c("IndB" = "Name", "YearOf", "MonthOf"))
 
   # Setup array for entire study period
   # Dimension 1 and 2 are individuals
-  # Dimension 3 is the permutation number
-  # Dimension 4 is type of count (Ind_NN_Present, Ind_NN_Together)
+  # Dimension 3 is Ind_NN_Present, Ind_NN_Together, and all permutations of Ind_NN_Together
   dyad_array <- array(, dim = c(length(Names),
                                 length(Names),
-                                n_permutations + 1, 2))
+                                n_permutations + 2))
   d1_2_names <- sort(unique(Names))
-  d3_names <- paste0("permutation_",
-                     stringr::str_pad(0:n_permutations,
-                                      width = nchar(n_permutations),
-                                      side = "left", pad = "0"))
-  d4_names <- c("Ind_NN_Present", "Ind_NN_Together")
-  dimnames(dyad_array) <- list(d1_2_names, d1_2_names, d3_names, d4_names)
+  d3_names <- c("Ind_NN_Present",
+                paste0("Ind_NN_Together_perm_",
+                       stringr::str_pad(0:n_permutations,
+                                        width = nchar(n_permutations),
+                                        side = "left", pad = "0")))
+  dimnames(dyad_array) <- list(d1_2_names, d1_2_names, d3_names)
 
-  rm(list = c("Names", "YearOf", "MonthOf", "d1_2_names", "d3_names", "d4_names"))
+  rm(list = c("Names", "YearOf", "MonthOf", "d1_2_names", "d3_names"))
 
-  ## Permute scan data and calculate association index for each permutation
+  # Setup temporary scan data table (will be modified in permutation below)
   temp_scan_df <- scandata_df %>%
     select(YearOf, MonthOf, Individual, Ind_Adult, Ind_Sex,
            NN, NN_Adult, NN_Sex, Dist)
 
+  # Calculate for all individuals, for each month lines where
+  # A is Individual while A and B both in the group as adults
+
+  # Monthly counts of Ind
+  ind_count <- temp_scan_df %>%
+    group_by(YearOf, MonthOf, Individual) %>%
+    summarize(Count_Ind = n()) %>% ungroup
+
+  # Combine with dyad summary - one value per direction (IndA-IndB and IndB-IndA)
+  d_sum <- dyad_table %>%
+    left_join(ind_count, by = c("YearOf", "MonthOf", "IndA" = "Individual"))
+
+  # Only keep lines in which both indidivuals (IndA, IndB) were adult and present
+  # Then, filter out NAs (which means both were around but IndA not observed. Equal to 0)
+
+  d_sum <- d_sum %>%
+    filter(IndA_Adult == 1 & IndB_Adult == 1) %>%
+    filter(!is.na(Count_Ind))
+
+  # Now, summarize values for entire period
+  d_sum <- d_sum %>%
+    group_by(IndA, IndB) %>%
+    summarize(Count_Ind_NN_Present = sum(Count_Ind))
+
+  # Create temporary matrix, fill with Count_Ind_NN_Present values
+  # Then add to first layer of dyadic array ("Ind_NN_Present")
+  temp_matrix <- as.matrix(dyad_array[,,"Ind_NN_Present"])
+  temp_matrix[as.matrix(d_sum[c("IndA", "IndB")])] <-     d_sum$Count_Ind_NN_Present
+  dyad_array[,, "Ind_NN_Present"] <- temp_matrix
+
+  ## Permute scan data, for each permutation calculate number of times IndA
+  ## observed with IndB as NN
 
   for(i in 0:n_permutations){
     cat("\rPermutation ", i, "/", n_permutations)
@@ -364,15 +393,9 @@ get_dyadic_association_rc <- function(scandata_df,
                                         presence_df = presence_df,
                                         n_iter_per_permutation = n_iter_per_permutation, ...)
     }
-    # Use temp scandata to calculate association index
-    # For all individuals, for each month, count lines with:
-    #   1. A as Individual while A and B in the group as adults
-    #   2. A as Individual with B as NN
 
-    # Monthly counts of Ind
-    ind_count <- temp_scan_df %>%
-      group_by(YearOf, MonthOf, Individual) %>%
-      summarize(Count_Ind = n()) %>% ungroup
+    # Calculate for all individuals, for each month lines where
+    # A was Individual with B as NN
 
     # Monthly counts of Ind per NN
     ind_nn_count <- temp_scan_df %>%
@@ -381,41 +404,25 @@ get_dyadic_association_rc <- function(scandata_df,
       summarize(Count_Ind_NN_Together = n()) %>% ungroup
 
     # Combine with dyad summary - one value per direction (IndA-IndB and IndB-IndA)
-    dyad_summaries <- dyad_table %>%
-      left_join(ind_count, by = c("YearOf", "MonthOf", "IndA" = "Individual")) %>%
+    d_sum <- dyad_table %>%
       left_join(ind_nn_count, by = c("YearOf", "MonthOf", "IndA" = "Individual", "IndB" = "NN"))
 
-    # In this dataset, NAs in Count_Ind and Count_Ind_NN_Together can have two reasons:
-    # 1) Indidivual and/or NN were not adult and present in a month
-    # 2) Individual and/or NN were adult and present but never observed as Individual or NN
-    #     (therefore, ind_count and ind_nn_count had no line for the month)
-    #
-    # Therefore, only keep lines in which both individuals were adult and present
-    # Then, replace NAs by 0 (because were around but never observed alone/together)
-
-    dyad_summaries <- dyad_summaries %>%
+    # Only keep lines in which both individuals were adult and present
+    # Then, filter out NAs (which means both were around but IndB never NN of IndA. Equal to 0)
+    d_sum <- d_sum %>%
       filter(IndA_Adult == 1 & IndB_Adult == 1) %>%
-      replace_na(list(Count_Ind = 0, Count_Ind_NN_Together = 0))
+      filter(!is.na(Count_Ind_NN_Together))
 
     # Now, summarize values for entire period
-    dyad_summaries <- dyad_summaries %>%
+    d_sum <- d_sum %>%
       group_by(IndA, IndB) %>%
-      summarize(Count_Ind_NN_Present = sum(Count_Ind),
-                Count_Ind_NN_Together = sum(Count_Ind_NN_Together))
+      summarize(Count_Ind_NN_Together = sum(Count_Ind_NN_Together))
 
-    # Fill dyadic arrays with values from summary table
-    # Use i + 1 because i starts with 0 (original dataframe)
-
-    # Create temporary matrix, fill with Count_Ind_NN_Present values and add to array
-    temp_matrix <- as.matrix(dyad_array[,,(i + 1), 1])
-    temp_matrix[as.matrix(dyad_summaries[c("IndA", "IndB")])] <-     dyad_summaries$Count_Ind_NN_Present
-    dyad_array[,, (i + 1), "Ind_NN_Present"] <- temp_matrix
-
-    # Create temporary matrix, fill with Count_Ind_NN_Together values and add to array
-    temp_matrix <- as.matrix(dyad_array[,,(i + 1), 2])
-    temp_matrix[as.matrix(dyad_summaries[c("IndA", "IndB")])] <- dyad_summaries$Count_Ind_NN_Together
-    dyad_array[,,(i + 1), "Ind_NN_Together"] <- temp_matrix
-
+    # Fill dyadic arrays with Count_Ind_NN_Together values. Use (i + 2) because i
+    # starts with 0 (original dataframe) but 1 is Count_Ind_NN_Present
+    temp_matrix <- as.matrix(dyad_array[,,(i+2)]) # Use empty layer
+    temp_matrix[as.matrix(d_sum[c("IndA", "IndB")])] <- d_sum$Count_Ind_NN_Together
+    dyad_array[,, (i+2)] <- temp_matrix
   }
 
   # And return the array
@@ -461,14 +468,10 @@ permute_scan_data <- function(ind_sex_permutation = c("Male", "Female"),
                               scandata_df,
                               presence_df,
                               n_iter_per_permutation,
-                              show_i = TRUE,
-                              set.seed = TRUE){
+                              show_i = TRUE){
 
   # Create new dataframe
   scan_permuted <- scandata_df
-
-  # Set seed if set.seed is TRUE
-  if(set.seed) set.seed(1209)
 
   # Change NNs i n_iter_per_permutation times
   for(i in 1:n_iter_per_permutation){
@@ -477,8 +480,8 @@ permute_scan_data <- function(ind_sex_permutation = c("Male", "Female"),
     # defined by ind_sex_permutation and nn_sex_permutation)
     l1check <- FALSE
     while(isFALSE(l1check)){
-      l1 <- sample(nrow(scandata_df), 1)
-      row1 <- scandata_df[l1,]
+      l1 <- sample(nrow(scan_permuted), 1)
+      row1 <- scan_permuted[l1,]
       if(row1$Ind_Adult == 1){
         if(row1$Ind_Sex %in% ind_sex_permutation){
           if(row1$NN_Adult == 1){
@@ -491,8 +494,8 @@ permute_scan_data <- function(ind_sex_permutation = c("Male", "Female"),
     # Then check if NN2 present at date of row1 and NN1 present at date of row2
     l2check <- FALSE
     while(isFALSE(l2check)){
-      l2 <- sample(nrow(scandata_df), 1)
-      row2 <- scandata_df[l2,]
+      l2 <- sample(nrow(scan_permuted), 1)
+      row2 <- scan_permuted[l2,]
       if(row2$Ind_Adult == 1){
         if(row2$Ind_Sex %in% ind_sex_permutation){
           if(row2$NN_Adult == 1){
