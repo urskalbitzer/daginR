@@ -1,8 +1,15 @@
 ---
-output: github_document
+title: "DaginR"
+author: "Urs Kalbitzer"
+date: "`r Sys.Date()`"
+output:
+  md_document:
+    variant: markdown_github
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8} 
 ---
-
-<!-- README.md is generated from README.Rmd. Please edit that file -->
 
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(
@@ -17,7 +24,7 @@ knitr::opts_chunk$set(
 A Package to process behavioral data from capuchins and red colobus, and to conduct analyses of sociality
 
 
-### Parts
+## Parts of the package
 The package consists of three parts:
   
 1. Process various types of data (focal, census, etc.) from capuchins
@@ -25,27 +32,17 @@ The package consists of three parts:
 3. Calculate social network parameters
 
 ### 1. Process capuchin data
-Filename: process-capuchin-data.R  
 
-Functions:
-  
-- determine_presence
-- calc_effort_AB
-- calc_dyadic_rates
-- calc_dyadic_rates_mymg (for multiple years and multiple groups)
-- dydic_rates_to_dsi
-- dydic_rates_to_dsi_mymg (for multiple years and multiple groups)
-- calc_dsi_topn
+For details, see: `process-capuchin-data.R` and included help documents
 
 ### 2. Process red colobus data
 
+For details, see: `process-redcolobus-data.R` and included help documents
+
 ### 3. Calculate social network parameters
-Filename: calculate-sna-pars.R
 
-Functions
-- calc_sna_pars
-- calc_sna_pars_mymg (for multiple years and multiple groups)
-
+For details, see: `calculate-sna-pars.R` and included help documents
 
 ## Example
 
+Will follow
