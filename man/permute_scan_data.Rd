@@ -10,7 +10,7 @@ both type I and type II error rates." (Farine, 2017)}
 \usage{
 permute_scan_data(ind_sex_permutation = c("Male", "Female"),
   nn_sex_permutation = c("Male", "Female"), scandata_df, presence_df,
-  n_iter_per_permutation, show_i = TRUE, set.seed = TRUE)
+  n_iter_per_permutation, show_i = TRUE)
 }
 \arguments{
 \item{ind_sex_permutation}{default `c("Male", "Female")`}

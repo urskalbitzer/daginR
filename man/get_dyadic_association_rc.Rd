@@ -3,10 +3,10 @@
 \name{get_dyadic_association_rc}
 \alias{get_dyadic_association_rc}
 \title{For each dyad, this function counts the number of times and Individual A was
-recorded as Individual while Individual A and B were both adult and present (`Ind_NN_Present`).
-Then, it calculates how often Individual B was recorded as the Nearest
-Neighbour (NN) of Individual A for this time period (where both were adult
-and present; `Ind_NN_together`)}
+recorded as Individual while Individual A and B were both adult and present
+(`Ind_NN_Present`). Then, it calculates how often Individual B was recorded
+as the Nearest Neighbour (NN) of Individual A for this time period (where
+both were adult and present; `Ind_NN_together`)}
 \usage{
 get_dyadic_association_rc(scandata_df, id_sex_df, presence_df,
   max_nn_dist = 5, n_permutations = 0,
@@ -36,20 +36,20 @@ permutation}
 }
 \description{
 Furthermore, this function does pre-network data permutations `n_permutation`
-times (0 for no permutations) using the function `permute_scan_data`. For each permutation,
-`n_iter_per_permutation` NNs are swapped.
+times (0 for no permutations) using the function `permute_scan_data`. For
+each permutation, `n_iter_per_permutation` NNs are swapped.
 }
 \details{
-The results are provided as 4-dimensional array:
+The results are provided as 3-dimensional array:
 Dimension 1 and 2 are the different individuals (i.e. dyad matrix)
-Dimension 3 is the permutation number (starting with 0, the original data)
-Dimension 4 is type of count (Ind_NN_Present, Ind_NN_together)
+Dimension 3 is data. i = 1: Ind_NN_Present; i = 2: Ind_NN_Together;
+3 - n_permutations: Permutations of Ind_NN_Together
 
-Limitations: This function cannot (yet) permute only within sex classes. To
-achieve that, subset scandata and only include females or males before
-running the function. Set `ind_sex_permutation` and `nn_sex_permutation` to
-"Male"/"Female" respectively (although this should be working with default
-arguments)
+Limitations: This function cannot (yet) permute only within
+sex classes. To achieve that, subset scandata and only include females or
+males before running the function. Set `ind_sex_permutation` and
+`nn_sex_permutation` to "Male"/"Female" respectively (although this should be
+working with default arguments)
 }
 \examples{
 

@@ -204,3 +204,94 @@ get_strength_from_rates_mymg <- function(rate_table){
   return(strength_df)
 }
 
+#' Calculate Estimate of Social Different according to Whitehead 2008
+#'
+#' This function uses a max. likelhood to separate the variance of true association indices and the sampling variance.
+#' It's described in "Precision and power in the analysis of social structure using associations" (Whitehead, 2008, Animal Behaviour) and
+#' "Whitehead, H. 2008. Analyzing Animal Societies: Quantitative Methods for Vertebrate Social Analysis. Chicago: University of Chicago Press."
+#'
+#' @param x Matrix with values x[ij] number of observations of individuals i and j together
+#' @param d Matrix with values d[ij] used as denominator of the estimated association index
+#' @param initial.values Initial values for the parameters to be optimized over (`par` argument in `optim``)
+#' @param lower lower bounds for parameters
+#' @param upper upper bounds for parameters
+#'
+#' @export
+#'
+#' @examples
+#'
+get_S <- function(x, d, initial.values = c(0.5, 0.5),
+                  lower = c(0.01, 0.01), upper = c(1, 10)){
+  # Check if d and x are both matrices
+  if(!is.matrix(d)) stop("d is not a matrix")
+  if(!is.matrix(x)) stop("x is not a matrix")
+
+  # Change d and x into vectors of 'distances'
+  dat <- data.frame(dvec = as.vector(as.dist(d)),
+                    xvec = as.vector(as.dist(x)))
+
+  res <- optim(par = initial.values,
+               calc_LL_S,
+               data = dat,
+               method = "L-BFGS-B",
+               lower = lower, upper = upper)
+
+  S_mu_logLik <- list(mu = res$par[1],
+                      S = res$par[2],
+                      logLik = res$value)
+
+  return(S_mu_logLik)
+}
+
+#' Function to calculate likelihood of mu and S (for `get_S``)
+#'
+#' For details, see `get_S`
+#'
+#' @param par vector with the two parameters mu and S
+#' @param data Data frame with columns dvec and xvec
+#'
+#' @export
+#'
+
+calc_LL_S <- function(par, data){
+mu <- par[1]
+S <- par[2]
+# Define the integrand function
+integrand <- function(alpha){
+  alpha^x * (1 - alpha)^(d - x) * dbeta(alpha, shape1 = beta1, shape2 = beta2)
+}
+
+# Define beta1 and beta2
+beta1 <- mu *     ((1-mu) / (mu * S^2) - 1)
+beta2 <- (1-mu) * ((1-mu) / (mu * S^2) - 1)
+
+# If one of the parameters is 0 or negative, the beta distribution is not defined.
+# In that case, set the logLik to a very large number
+if(beta1 <= 0 | beta2 <= 0){
+  logLik <- 1e10
+} else {
+  # Else, calculate the likelihood with the beta parameters
+  # Remove all lines with d = 0
+  data <- data[data$dvec != 0,]
+  ## Then solve integral numerically from 0 to 1 for all dyads (d and x)
+  n <- length(data$dvec)
+  integrated <- rep(NA, n)
+
+  for(i in 1:n){
+    d <- data$dvec[i]
+    x <- data$xvec[i]
+    integrated[i] <- (integrate(integrand, lower = 0, upper = 1, rel.tol = 1e-8, abs.tol = 0))$value
+  }
+
+  # If any result here is 0, the product of all integrated values would be 0.
+  # Then, the log of the product would approach -Inf
+  # Therefore, set the logLik to very large number.
+  if(any(integrated == 0)){
+    logLik <- 1e10
+    # If not, calculate the negative sum of log(integrated) (which is the same as log(prod(integrated)))
+  } else {
+    logLik <- -sum(log(integrated))
+  }
+}
+return(logLik)
+}
