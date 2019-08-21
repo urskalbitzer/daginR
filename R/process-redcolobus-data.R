@@ -94,6 +94,13 @@ create_age_sex_codes <- function(link_table){
 #' first-adult-month of individuals to determine for each month whether an
 #' individual was 1) adult and 2) present
 #'
+#' Note that estimating the presence for short periods of time can be diffent
+#' from estimates from longer periods of time. Information what happens before
+#' or after the specified period of time is unknown and the function assumes
+#' that preceding and following month have a count of n_min. Ideally include 2
+#' months before and 2 months after each observation period. (Note to myself:
+#' this could also be included in the function.)
+#'
 #' Default is that individuals are considered absent if recorded for less than
 #' \code{n_min} (default 5) times per month for 3 months in a row
 #'
@@ -101,11 +108,12 @@ create_age_sex_codes <- function(link_table){
 #' @param scandata_df Data frame with red colobus scan data
 #' @param first_month_adult_df Dataframe with first-month-adult dates
 #' @param from_date,to_date Start and end date of analyzed period of time.
-#'   Format should be "yyyy-mm-dd"
+#'   Format should be "yyyy-mm-dd". First and last date will be included!
 #' @param n_min Minimum number of times an individual has to be recorded
 #'   (Individual + NN) to be considered present. If recorded < n_min for 3 month
 #'   in row, considered as absent (including the first month considered)
-#' @param details Provide details for each individual and each month (default FALSE)
+#' @param details Provide details for each individual and each month (default
+#'   FALSE)
 #'
 #' @export
 #'
@@ -117,10 +125,11 @@ get_presence_rc <- function(scandata_df, first_month_adult_df,
                             from_date, to_date, n_min = 5, details = FALSE){
 
   # Limit scandata table to required columns, and derive year and month column
+  # Use as.Date(DateTime) because otherwise from_data and to_date will be considered as datetime
   df <- scandata_df %>%
     filter(!is.na(Individual),
-           DateTime >= as.Date(from_date) &
-             DateTime <= as.Date(to_date)) %>%
+           as.Date(DateTime) >= as.Date(from_date) &
+             as.Date(DateTime) <= as.Date(to_date)) %>%
     select(DateTime, Individual, NN) %>%
     mutate(YearOf = lubridate::year(DateTime), MonthOf = lubridate::month(DateTime))
 

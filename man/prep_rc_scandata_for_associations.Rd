@@ -13,10 +13,10 @@ prep_rc_scandata_for_associations(scandata_df, from_date, to_date,
 \item{scandata_df}{Data frame with red colobus scan data}
 
 \item{from_date}{Start and end date of analyzed period of time.
-Format should be "yyyy-mm-dd"}
+Format should be "yyyy-mm-dd". First and last date will be included!}
 
 \item{to_date}{Start and end date of analyzed period of time.
-Format should be "yyyy-mm-dd"}
+Format should be "yyyy-mm-dd". First and last date will be included!}
 
 \item{presence_df}{Dataframe created with `get_presence_rc`}
 

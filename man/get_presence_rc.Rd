@@ -14,13 +14,14 @@ get_presence_rc(scandata_df, first_month_adult_df, from_date, to_date,
 \item{first_month_adult_df}{Dataframe with first-month-adult dates}
 
 \item{from_date, to_date}{Start and end date of analyzed period of time.
-Format should be "yyyy-mm-dd"}
+Format should be "yyyy-mm-dd". First and last date will be included!}
 
 \item{n_min}{Minimum number of times an individual has to be recorded
 (Individual + NN) to be considered present. If recorded < n_min for 3 month
 in row, considered as absent (including the first month considered)}
 
-\item{details}{Provide details for each individual and each month (default FALSE)}
+\item{details}{Provide details for each individual and each month (default
+FALSE)}
 }
 \description{
 This function uses scan data in combination with data on the
@@ -28,6 +29,13 @@ first-adult-month of individuals to determine for each month whether an
 individual was 1) adult and 2) present
 }
 \details{
+Note that estimating the presence for short periods of time can be diffent
+from estimates from longer periods of time. Information what happens before
+or after the specified period of time is unknown and the function assumes
+that preceding and following month have a count of n_min. Ideally include 2
+months before and 2 months after each observation period. (Note to myself:
+this could also be included in the function.)
+
 Default is that individuals are considered absent if recorded for less than
 \code{n_min} (default 5) times per month for 3 months in a row
 }
