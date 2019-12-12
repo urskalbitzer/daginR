@@ -4,10 +4,21 @@
 \alias{calc_dyadic_rates}
 \title{Calculation of behavior rates for female dyads}
 \usage{
-calc_dyadic_rates(focaldata, census_pace, biography_pace, group, start,
-  end, minAgeF, behaviours_duration, behaviours_events,
-  minEffortDyad = 0, minEffortInd = 0, roles_included = c("D", "R",
-  "M"), dyads_summarized = TRUE)
+calc_dyadic_rates(
+  focaldata,
+  census_pace,
+  biography_pace,
+  group,
+  start,
+  end,
+  minAgeF,
+  behaviours_duration,
+  behaviours_events,
+  minEffortDyad = 0,
+  minEffortInd = 0,
+  roles_included = c("D", "R", "M"),
+  dyads_summarized = TRUE
+)
 }
 \arguments{
 \item{focaldata}{Dataset with focaldata from capuchin monkeys}

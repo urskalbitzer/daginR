@@ -4,8 +4,11 @@
 \alias{dyadic_rates_to_dsi}
 \title{Function calculates DSI from dyadic rates}
 \usage{
-dyadic_rates_to_dsi(dyadic_rates_table, behaviours_included,
-  roles_included = c("D", "R", "M"))
+dyadic_rates_to_dsi(
+  dyadic_rates_table,
+  behaviours_included,
+  roles_included = c("D", "R", "M")
+)
 }
 \arguments{
 \item{dyadic_rates_table}{Table that was created by \code{calc_dyadic_rates}}

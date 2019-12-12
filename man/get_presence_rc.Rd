@@ -5,8 +5,14 @@
 \title{Determine presence of adult individuals in the Small Camp Red Colobus group
 for the specified period of time}
 \usage{
-get_presence_rc(scandata_df, first_month_adult_df, from_date, to_date,
-  n_min = 5, details = FALSE)
+get_presence_rc(
+  scandata_df,
+  first_month_adult_df,
+  from_date,
+  to_date,
+  n_min = 5,
+  details = FALSE
+)
 }
 \arguments{
 \item{scandata_df}{Data frame with red colobus scan data}

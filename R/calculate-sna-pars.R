@@ -173,8 +173,6 @@ get_strength_from_rates <- function(rate_table){
 #' @param rate_table Table with two individual ("IndA", "IndB") and one "Rate" column. Each dyad
 #'   should be listed twice (once in each direction) per year. Also requires columns "GroupCode" and "YearOf" or will fail.
 #'
-#' @inheritParams get_strength_from_rates
-#'
 #' @export
 #'
 #' @examples

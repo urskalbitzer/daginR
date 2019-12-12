@@ -4,8 +4,11 @@
 \alias{dyadic_rates_to_dsi_mymg}
 \title{Function calculates DSI from dyadic rates for several groups and years}
 \usage{
-dyadic_rates_to_dsi_mymg(dyadic_rates_table_mymg, behaviours_included,
-  roles_included = c("D", "R", "M"))
+dyadic_rates_to_dsi_mymg(
+  dyadic_rates_table_mymg,
+  behaviours_included,
+  roles_included = c("D", "R", "M")
+)
 }
 \arguments{
 \item{dyadic_rates_table_mymg}{Table that was created by

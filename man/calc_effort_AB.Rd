@@ -4,8 +4,15 @@
 \alias{calc_effort_AB}
 \title{Calculate focal time for female A while female B was present}
 \usage{
-calc_effort_AB(focaldata, census_pace, biography_pace, group, start, end,
-  minAgeF)
+calc_effort_AB(
+  focaldata,
+  census_pace,
+  biography_pace,
+  group,
+  start,
+  end,
+  minAgeF
+)
 }
 \arguments{
 \item{focaldata}{Dataset with focaldata from capuchin monkeys}

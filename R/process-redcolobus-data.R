@@ -193,23 +193,72 @@ get_presence_rc <- function(scandata_df, first_month_adult_df,
   return(presence_month)
 }
 
-#' Prepare Red Colobus scandata for determination of association index:
-#' Trim the data frame from start to end, and only keep relevant columns
+
+#' Prepare Red Colobus scandata for determination of association indices based on Nearest Neighbours:
 #'
 #' @param presence_df Dataframe created with `get_presence_rc`
 #' @param id_sex_df Table with sex of individuals. This is the link table
 #'   creates with `create_link_table`
+#' @param start_date String for start date that can be coerced to date by `as.Date`
+#' @param end_date String for end date that can be coerced to date by `as.Date`
+#' @param interval_length_month Lenght of each interval in months.
 #' @param filter_adults Only keep lines where Individual and NN were adult?
 #' @param keep_activity_interactant If FALSE, re-sort columns and sort out activity, interactant, and inter_age_sex
+#' @param ind_sex_included Which indivuals (Male, Female) should be included?
+#' @param nn_sex_included Which nearest neighbours (Male, Female) should be included?
+#'
 #' @inheritParams get_presence_rc
 #'
 #' @export
 #'
 #' @examples
 #'
+
+prep_red_colobus_ind_nn_data <- function(scandata_df, presence_df, id_sex_df,
+                                         start_date, end_date, interval_length_month,
+                                         filter_adults = TRUE,
+                                         keep_activity_interactant = FALSE,
+                                         ind_sex_included, nn_sex_included){
+
+  # Create list with start and end dates
+  time_points <- seq(as.Date(start_date), as.Date(end_date), by = paste0(interval_length_month, " months"))
+  time_periods <- list(start = time_points[-length(time_points)],
+                       end = time_points[-1] - 1)
+
+  # Prepare the Individual-Nearest Neighbor data frame for all time periods
+  for(i in 1:length(time_periods$start)){
+    ind_nn_df_temp <- prep_red_colobus_ind_nn_data_one_period(scandata_df = scandata_df,
+                                                              from_date = time_periods$start[i],
+                                                              to_date = time_periods$end[i],
+                                                              presence_df = presence_df,
+                                                              filter_adults = filter_adults,
+                                                              id_sex_df = id_sex_df,
+                                                              keep_activity_interactant = keep_activity_interactant) %>%
+      filter(Ind_Sex %in% ind_sex_included, NN_Sex %in% nn_sex_included)
+
+    if(i == 1){ ind_nn_df <- ind_nn_df_temp
+    } else { ind_nn_df <- bind_rows(ind_nn_df, ind_nn_df_temp) }
+  }
+  return(ind_nn_df)
+}
+
+
+
+
+
+
+#' Prepare Red Colobus scandata for determination of association indices based on Nearest Neighbours:
+#' Trim the data frame from start to end of a single period, and only keep relevant columns
+#'
+#' @inheritParams get_presence_rc
+#' @inheritParams prep_red_colobus_ind_nn_data
+#'
+#' @export
+#'
+#' @examples
 #'
 
-prep_rc_scandata_for_associations <- function(scandata_df,
+prep_red_colobus_ind_nn_data_one_period <- function(scandata_df,
                                               from_date, to_date,
                                               presence_df, id_sex_df,
                                               filter_adults = TRUE,
@@ -271,173 +320,148 @@ prep_rc_scandata_for_associations <- function(scandata_df,
     df <- df %>%
       filter(Ind_Adult == 1 & NN_Adult == 1)
   }
+  # Add information about time period
+  df$time_period_start <- from_date
+  df$time_period_end <- to_date
 
   return(df)
 }
 
 
-#' For each dyad, this function counts the number of times and Individual A was
-#' recorded as Individual while Individual A and B were both adult and present
-#' (`Ind_NN_Present`). Then, it calculates how often Individual B was recorded
-#' as the Nearest Neighbour (NN) of Individual A for this time period (where
-#' both were adult and present; `Ind_NN_together`)
+#' For each dyad within each time period, this function counts the number of
+#' times an Individual A was recorded as Individual while Individual A and B
+#' were both adult and present (`$n_Ind_while_NN_present`). Then, it calculates
+#' how often Individual B was recorded as the Nearest Neighbour (NN) of
+#' Individual A for a time period (where both were adult and present;
+#' `$n_Ind_NN_together_observed`).
 #'
-#' Furthermore, this function does pre-network data permutations `n_permutation`
-#' times (0 for no permutations) using the function `permute_scan_data`. For
-#' each permutation, `n_iter_per_permutation` NNs are swapped.
+#' Furthermore, this function conducts pre-network data permutations
+#' `n_permutations` times (0 for no permutations) using the function
+#' `permute_scan_data` For each permutation, `flips_per_permutation` NNs are
+#' flipped. Then, the number of times Individual B was recorded as NN of
+#' Individual A is counted (`$n_Ind_NN_together_permuted`)
 #'
-#' The results are provided as 3-dimensional array:
-#' Dimension 1 and 2 are the different individuals (i.e. dyad matrix)
-#' Dimension 3 is data. i = 1: Ind_NN_Present; i = 2: Ind_NN_Together;
-#' 3 - n_permutations: Permutations of Ind_NN_Together
 #'
-#' Limitations: This function cannot (yet) permute only within
-#' sex classes. To achieve that, subset scandata and only include females or
-#' males before running the function. Set `ind_sex_permutation` and
-#' `nn_sex_permutation` to "Male"/"Female" respectively (although this should be
-#' working with default arguments)
+#' Limitations: This function cannot (yet) permute within sex classes only. To
+#' achieve that, subset scandata and only include females or males before
+#' running the function. Set `ind_sex_permutation` and `nn_sex_permutation` to
+#' "Male"/"Female" respectively (although this should be working with default
+#' arguments)
 #'
-#' @param scandata_df Data frame with red colobus scan data
+#' @param ind_nn_df Data frame with information on indviduals and nearest
+#'   neighours from red colobus scan data. Created with
+#'   `prep_red_colobus_ind_nn_data()`
 #' @param id_sex_df Table with sex of individuals. This is the link table
-#'   creates with `create_link_table`
+#'   created with `create_link_table`
 #' @param max_nn_dist The maximum distance for which an individual is still
 #'   considered NN. Default is 5 (m)
 #' @param n_permutations How many permutations should be conducted?
 #' @inheritParams get_presence_rc
-#' @inheritParams prep_rc_scandata_for_associations
+#' @inheritParams prep_red_colobus_ind_nn_data_one_period
 #' @inheritParams permute_scan_data
 #'
 #' @export
 #'
 #' @examples
 #'
-
-get_dyadic_association_rc <- function(scandata_df,
-                                      id_sex_df,
-                                      presence_df,
-                                      max_nn_dist = 5,
-                                      n_permutations = 0,
-                                      ind_sex_permutation = c("Male", "Female"),
-                                      nn_sex_permutation = c("Male", "Female"),
-                                      n_iter_per_permutation = 1, ...){
+get_dyadic_observations <- function(ind_nn_df, id_sex_df, presence_df,
+                                    max_nn_dist = 5, n_permutations = 0,
+                                    ind_sex_permutation = c("Male", "Female"), # Base this on ind_nn_df?
+                                    nn_sex_permutation = c("Male", "Female"), # Base this on ind_nn_df?
+                                    flips_per_permutation = 1, ...){
   # TO DO:
-  # 1. Include argument checks (including checks of provided data)
+  # - Include argument checks (including checks of provided data)
+  # - Add attributes: class, ind_sex_class, nn_sex_class
 
-  # Setup dataframe with all dyads (both directions) per month and information on adult-presence and sex
-  Names <- union(unique(scandata_df$Individual), unique(scandata_df$NN))
-  YearOf = distinct(scandata_df, YearOf, MonthOf)$YearOf
-  MonthOf = distinct(scandata_df, YearOf, MonthOf)$MonthOf
-  dyad_table <- expand_grid(IndA = Names, IndB = Names,
-                            nesting(YearOf, MonthOf)) %>%
-    filter(IndA != IndB) %>%
-    left_join(rename(presence_df, IndA_Adult = Present_As_Adult),
-              by = c("IndA" = "Name", "YearOf", "MonthOf")) %>%
-    left_join(rename(presence_df, IndB_Adult = Present_As_Adult),
-              by = c("IndB" = "Name", "YearOf", "MonthOf"))
+  # Get time periods from ind_nn data frame
+  time_periods <- as.list(distinct(ind_nn_df, start = time_period_start, end = time_period_end))
+  time_periods_labels <- paste0("timeperiod_", str_pad(1:length(time_periods$start),
+                                                       width = nchar(length(time_periods$start)),
+                                                       pad = "0"))
+  # Create a list with a sub-list for each time period
+  dyadic_observation_list <- structure(vector("list", length = length(time_periods_labels)),
+                                       names = time_periods_labels,
+                                       timeperiod_start = time_periods[[1]],
+                                       timeperiod_end = time_periods[[2]],
+                                       max_nn_dist = max_nn_dist,
+                                       n_permutations = n_permutations,
+                                       ind_sex_permutation = ind_sex_permutation,
+                                       nn_sex_permutation = nn_sex_permutation,
+                                       flips_per_permutation = flips_per_permutation)
 
-  # Setup array for entire study period
-  # Dimension 1 and 2 are individuals
-  # Dimension 3 is Ind_NN_Present, Ind_NN_Together, and all permutations of Ind_NN_Together
-  dyad_array <- array(, dim = c(length(Names),
-                                length(Names),
-                                n_permutations + 2))
-  d1_2_names <- sort(unique(Names))
-  d3_names <- c("Ind_NN_Present",
-                paste0("Ind_NN_Together_perm_",
-                       stringr::str_pad(0:n_permutations,
-                                        width = nchar(n_permutations),
-                                        side = "left", pad = "0")))
-  dimnames(dyad_array) <- list(d1_2_names, d1_2_names, d3_names)
+  for(i in 1:length(dyadic_observation_list)){
+    cat("\ntime period", i, "/", length(dyadic_observation_list), "\n")
 
-  rm(list = c("Names", "YearOf", "MonthOf", "d1_2_names", "d3_names"))
+    ### Preparations
+    # Get temporary data frame with nearest neighbour data for ith time period
+    ind_nn_single_timeperiod <- ind_nn_df %>%
+      filter(time_period_start == time_periods$start[i] &
+               time_period_end == time_periods$end[i]) %>%
+      select(YearOf, MonthOf, Individual, Ind_Adult, Ind_Sex,
+             NN, NN_Adult, NN_Sex, Dist)
 
-  # Setup temporary scan data table (will be modified in permutation below)
-  temp_scan_df <- scandata_df %>%
-    select(YearOf, MonthOf, Individual, Ind_Adult, Ind_Sex,
-           NN, NN_Adult, NN_Sex, Dist)
+    # Setup dataframe with all dyads (both directions) per month and information on adult-presence and sex
+    Names <- union(unique(ind_nn_single_timeperiod$Individual), unique(ind_nn_single_timeperiod$NN))
+    YearOf = distinct(ind_nn_single_timeperiod, YearOf, MonthOf)$YearOf
+    MonthOf = distinct(ind_nn_single_timeperiod, YearOf, MonthOf)$MonthOf
 
-  # Calculate for all individuals, for each month lines where
-  # A is Individual while A and B both in the group as adults
+    dyad_table <- expand_grid(IndA = Names, IndB = Names,
+                              nesting(YearOf, MonthOf)) %>%
+      filter(IndA != IndB) %>%
+      left_join(rename(presence_df, IndA_Adult = Present_As_Adult),
+                by = c("IndA" = "Name", "YearOf", "MonthOf")) %>%
+      left_join(rename(presence_df, IndB_Adult = Present_As_Adult),
+                by = c("IndB" = "Name", "YearOf", "MonthOf"))
 
-  # Monthly counts of Ind
-  ind_count <- temp_scan_df %>%
-    group_by(YearOf, MonthOf, Individual) %>%
-    summarize(Count_Ind = n()) %>% ungroup
+    # Setup matrix for time period. Dimension 1 and 2 are individuals
+    dyad_matrix <- array(, dim = c(length(Names), length(Names)))
+    dimnames(dyad_matrix) <- list(Individual = sort(unique(Names)), NN = sort(unique(Names)))
 
-  # Combine with dyad summary - one value per direction (IndA-IndB and IndB-IndA)
-  d_sum <- dyad_table %>%
-    left_join(ind_count, by = c("YearOf", "MonthOf", "IndA" = "Individual"))
+    ### 1. Get n_Ind_NN_together_observed
+    temp_matrix <- calc_ind_while_NN_present(ind_nn_single_timeperiod,
+                                             dyad_table, dyad_matrix)
+    dyadic_observation_list[[i]]$n_Ind_while_NN_present <- temp_matrix
 
-  # Only keep lines in which both indidivuals (IndA, IndB) were adult and present
-  # Then, filter out NAs (which means both were around but IndA not observed. Equal to 0)
+    ### 2. Get n_Ind_NN_together_observed
+    temp_matrix <- calc_ind_NN_together(ind_nn_single_timeperiod, dyad_table,
+                                        dyad_matrix, max_nn_dist)
+    dyadic_observation_list[[i]]$n_Ind_NN_together_observed <- temp_matrix
 
-  d_sum <- d_sum %>%
-    filter(IndA_Adult == 1 & IndB_Adult == 1) %>%
-    filter(!is.na(Count_Ind))
+    ### 3. Get n_Ind_NN_together_permuted
+    ## Permute scan data. For each permutation calculate number of times IndA
+    ## observed with IndB as NN
+    if(n_permutations > 0){
+      ind_nn_single_timeperiod_temp <- ind_nn_single_timeperiod
+      for(j in 1:n_permutations){
+        cat("\rPermutation ", j, "/", n_permutations)
 
-  # Now, summarize values for entire period
-  d_sum <- d_sum %>%
-    group_by(IndA, IndB) %>%
-    summarize(Count_Ind_NN_Present = sum(Count_Ind))
+        # For each permutation, use the temp dataset
+        # Permute flips_per_permutation times
+        ind_nn_single_timeperiod_temp <- permute_scan_data(
+          ind_sex_permutation = ind_sex_permutation,
+          nn_sex_permutation = nn_sex_permutation,
+          ind_nn_single_timeperiod = ind_nn_single_timeperiod_temp,
+          presence_df = presence_df,
+          flips_per_permutation = flips_per_permutation, ...)
 
-  # Create temporary matrix, fill with Count_Ind_NN_Present values
-  # Then add to first layer of dyadic array ("Ind_NN_Present")
-  temp_matrix <- as.matrix(dyad_array[,,"Ind_NN_Present"])
-  temp_matrix[as.matrix(d_sum[c("IndA", "IndB")])] <-     d_sum$Count_Ind_NN_Present
-  dyad_array[,, "Ind_NN_Present"] <- temp_matrix
+        temp_matrix <- calc_ind_NN_together(ind_nn_single_timeperiod_temp,
+                                            dyad_table, dyad_matrix, max_nn_dist)
+        if(j == 1){
+          temp_array <- replicate(n_permutations, dyad_matrix, simplify = "array")
+          names(dimnames(temp_array))[[3]] <- "Permutation_i"
+          dimnames(temp_array)[[3]] <- 1:n_permutations
+          dyadic_observation_list[[i]]$n_Ind_NN_together_permuted <- temp_array
+          dyadic_observation_list[[i]]$n_Ind_NN_together_permuted[,,j] <- temp_matrix
 
-  ## Permute scan data, for each permutation calculate number of times IndA
-  ## observed with IndB as NN
+        } else {
+          dyadic_observation_list[[i]]$n_Ind_NN_together_permuted[,,j] <- temp_matrix
+        }
 
-  for(i in 0:n_permutations){
-    cat("\rPermutation ", i, "/", n_permutations)
-    # First calculation is on original data frame
-    if(i == 0) temp_scan_df <- temp_scan_df
-    # For each following permutation, use the temp dataset
-    # Permute n_iter_per_permutation times
-    if(i > 0){
-      temp_scan_df <- permute_scan_data(ind_sex_permutation = ind_sex_permutation,
-                                        nn_sex_permutation = nn_sex_permutation,
-                                        scandata_df = temp_scan_df,
-                                        presence_df = presence_df,
-                                        n_iter_per_permutation = n_iter_per_permutation, ...)
+      }
     }
-
-    # Calculate for all individuals, for each month lines where
-    # A was Individual with B as NN
-
-    # Monthly counts of Ind per NN
-    ind_nn_count <- temp_scan_df %>%
-      filter(Dist <= max_nn_dist) %>%
-      group_by(YearOf, MonthOf, Individual, NN) %>%
-      summarize(Count_Ind_NN_Together = n()) %>% ungroup
-
-    # Combine with dyad summary - one value per direction (IndA-IndB and IndB-IndA)
-    d_sum <- dyad_table %>%
-      left_join(ind_nn_count, by = c("YearOf", "MonthOf", "IndA" = "Individual", "IndB" = "NN"))
-
-    # Only keep lines in which both individuals were adult and present
-    # Then, filter out NAs (which means both were around but IndB never NN of IndA. Equal to 0)
-    d_sum <- d_sum %>%
-      filter(IndA_Adult == 1 & IndB_Adult == 1) %>%
-      filter(!is.na(Count_Ind_NN_Together))
-
-    # Now, summarize values for entire period
-    d_sum <- d_sum %>%
-      group_by(IndA, IndB) %>%
-      summarize(Count_Ind_NN_Together = sum(Count_Ind_NN_Together))
-
-    # Fill dyadic arrays with Count_Ind_NN_Together values. Use (i + 2) because i
-    # starts with 0 (original dataframe) but 1 is Count_Ind_NN_Present
-    temp_matrix <- as.matrix(dyad_array[,,(i+2)]) # Use empty layer
-    temp_matrix[as.matrix(d_sum[c("IndA", "IndB")])] <- d_sum$Count_Ind_NN_Together
-    dyad_array[,, (i+2)] <- temp_matrix
   }
-
-  # And return the array
-  return(dyad_array)
+  return(dyadic_observation_list)
 }
-
 
 #' Permutation of Nearest Neighbours in Red Colobus scan data: Following
 #' suggestion by Farine (2017, MEE), this function permutes raw observations
@@ -453,44 +477,43 @@ get_dyadic_association_rc <- function(scandata_df,
 #' Individual (2) and NN (2). Furthermore, it is controlled that NN1 was present at
 #' date of second row, and NN2 present at date of first row.
 #'
-#' If these conditions are met, the two NNs are swapped.
+#' If these conditions are met, the two NNs are flipped.
 #'
-#' This procedure is repeated `n_iter_per_permutation` times.
-#'
+#' This procedure is repeated `flips_per_permutation` times.
 #'
 #' @param ind_sex_permutation default `c("Male", "Female")`
 #' @param nn_sex_permutation default `c("Male", "Female")`
-#' @param n_iter_per_permutation Number of iterations ('NN swaps') per
+#' @param flips_per_permutation Number of iterations ('NN flips') per
 #'   permutation
-#' @param show_i Show progress>
-#' @param set.seed If TRUE, use `set.seed(1209)`
-#' @inheritParams get_presence_rc
-#' @inheritParams prep_rc_scandata_for_associations
+#' @param show_i Show progress
 #'
+#' @inheritParams get_presence_rc
+#' @inheritParams prep_red_colobus_ind_nn_data_one_period
+#' @inheritParams calc_ind_while_NN_present
 #' @export
 #'
 #' @examples
 #'
 
-permute_scan_data <- function(ind_sex_permutation = c("Male", "Female"),
-                              nn_sex_permutation = c("Male", "Female"),
-                              scandata_df,
+permute_scan_data <- function(ind_nn_single_timeperiod,
                               presence_df,
-                              n_iter_per_permutation,
-                              show_i = TRUE){
+                              ind_sex_permutation = c("Male", "Female"),
+                              nn_sex_permutation = c("Male", "Female"),
+                              flips_per_permutation,
+                              show_i = FALSE){
 
   # Create new dataframe
-  scan_permuted <- scandata_df
+  ind_nn_single_timeperiod_permuted <- ind_nn_single_timeperiod
 
-  # Change NNs i n_iter_per_permutation times
-  for(i in 1:n_iter_per_permutation){
-    if(show_i) cat("\rChanging NN number ", i, "/", n_iter_per_permutation)
+  # Change NNs i flips_per_permutation times
+  for(i in 1:flips_per_permutation){
+    if(show_i) cat("\rChanging NN number ", i, "/", flips_per_permutation)
     # Pick line 1 and check if Ind + NN adult and have correct Sex class (as
     # defined by ind_sex_permutation and nn_sex_permutation)
     l1check <- FALSE
     while(isFALSE(l1check)){
-      l1 <- sample(nrow(scan_permuted), 1)
-      row1 <- scan_permuted[l1,]
+      l1 <- sample(nrow(ind_nn_single_timeperiod_permuted), 1)
+      row1 <- ind_nn_single_timeperiod_permuted[l1,]
       if(row1$Ind_Adult == 1){
         if(row1$Ind_Sex %in% ind_sex_permutation){
           if(row1$NN_Adult == 1){
@@ -503,8 +526,8 @@ permute_scan_data <- function(ind_sex_permutation = c("Male", "Female"),
     # Then check if NN2 present at date of row1 and NN1 present at date of row2
     l2check <- FALSE
     while(isFALSE(l2check)){
-      l2 <- sample(nrow(scan_permuted), 1)
-      row2 <- scan_permuted[l2,]
+      l2 <- sample(nrow(ind_nn_single_timeperiod_permuted), 1)
+      row2 <- ind_nn_single_timeperiod_permuted[l2,]
       if(row2$Ind_Adult == 1){
         if(row2$Ind_Sex %in% ind_sex_permutation){
           if(row2$NN_Adult == 1){
@@ -523,14 +546,109 @@ permute_scan_data <- function(ind_sex_permutation = c("Male", "Female"),
                 }}}}}}
     }
 
-    # Swap NNs
-    scan_permuted[l1,]$NN <- row2$NN
-    scan_permuted[l1,]$NN_Sex <- row2$NN_Sex
-    scan_permuted[l2,]$NN <- row1$NN
-    scan_permuted[l2,]$NN_Sex <- row1$NN_Sex
+    # Flip NNs
+    ind_nn_single_timeperiod_permuted[l1,]$NN <- row2$NN
+    ind_nn_single_timeperiod_permuted[l1,]$NN_Sex <- row2$NN_Sex
+    ind_nn_single_timeperiod_permuted[l2,]$NN <- row1$NN
+    ind_nn_single_timeperiod_permuted[l2,]$NN_Sex <- row1$NN_Sex
   }
 
   # Return permuted data
-  return(scan_permuted)
+  return(ind_nn_single_timeperiod_permuted)
 }
 
+#' Function to calculate for all individuals, for each month the number of lines
+#' (i.e. observation) where A is Individual while A and B both in the group as
+#' adults
+#'
+#' @param ind_nn_single_timeperiod based on ind_nn_df created with
+#'   `prep_red_colobus_ind_nn_data()`
+#' @param dyad_table Data frame with all individuals observed during the time
+#'   period indicating for each month whether they were adult
+#' @param dyad_matrix Empty matrix with all individual names as rows/cols
+#' @param return_matrix Should the result returned as matrix (default) or data
+#'   frame
+#'
+#' @export
+#'
+#' @examples
+#'
+
+calc_ind_while_NN_present <- function(ind_nn_single_timeperiod,
+                                      dyad_table, dyad_matrix,
+                                      return_matrix = TRUE) {
+
+  # Monthly counts of Ind
+  ind_count <- ind_nn_single_timeperiod %>%
+    group_by(YearOf, MonthOf, Individual) %>%
+    summarize(Count_Ind = n()) %>% ungroup
+
+  # Combine with dyad summary - one value per direction (IndA-IndB and IndB-IndA)
+  ind_count <- left_join(dyad_table, ind_count,
+                         by = c("YearOf", "MonthOf", "IndA" = "Individual"))
+
+  # Only keep lines in which both indidivuals (IndA, IndB) were adult and present
+  # Then, filter out NAs (which means both were around but IndA not observed. Equal to 0)
+  ind_count <- ind_count %>%
+    filter(IndA_Adult == 1 & IndB_Adult == 1) %>%
+    filter(!is.na(Count_Ind))
+
+  # Now, summarize values for entire period
+  ind_count <- ind_count %>%
+    group_by(Individual = IndA, NN = IndB) %>%
+    summarize(Count_Ind_NN_Present = sum(Count_Ind))
+
+  # And put values into a matrix if return_matrix = TRUE
+  if(return_matrix){
+    temp_matrix <- dyad_matrix
+    temp_matrix[as.matrix(ind_count[c("Individual", "NN")])] <- ind_count$Count_Ind_NN_Present
+    return(temp_matrix)
+  } else {
+    return(ind_count)
+  }
+}
+
+#' Function to calculate for all individuals, for each month the number of lines
+#' (i.e. observations) where A was Individual with B as NN
+#'
+#' @inheritParams calc_ind_while_NN_present
+#' @inheritParams get_dyadic_observations
+#' @export
+#'
+#' @examples
+#'
+#'
+calc_ind_NN_together <- function(ind_nn_single_timeperiod, dyad_table, dyad_matrix,
+                                 max_nn_dist,
+                                 return_matrix = TRUE){
+  # Monthly counts of Ind per NN
+  ind_nn_count <- ind_nn_single_timeperiod %>%
+    filter(Dist <= max_nn_dist) %>%
+    group_by(YearOf, MonthOf, Individual, NN) %>%
+    summarize(Count_Ind_NN_Together = n()) %>% ungroup
+
+  # Combine with dyad table - one value per direction (IndA-IndB and IndB-IndA)
+  ind_nn_count <- left_join(dyad_table,
+                            ind_nn_count,
+                            by = c("YearOf", "MonthOf", "IndA" = "Individual", "IndB" = "NN"))
+
+  # Only keep lines in which both individuals were adult and present
+  # Then, filter out NAs (which means both were around but IndB never NN of IndA. Equal to 0)
+  ind_nn_count <- ind_nn_count %>%
+    filter(IndA_Adult == 1 & IndB_Adult == 1) %>%
+    filter(!is.na(Count_Ind_NN_Together))
+
+  # Now, summarize values for entire period
+  ind_nn_count <- ind_nn_count %>%
+    group_by(Individual = IndA, NN = IndB) %>%
+    summarize(Count_Ind_NN_Together = sum(Count_Ind_NN_Together))
+
+  # And put values into a matrix if return_matrix = TRUE
+  if(return_matrix){
+    temp_matrix <- dyad_matrix
+    temp_matrix[as.matrix(ind_nn_count[c("Individual", "NN")])] <- ind_nn_count$Count_Ind_NN_Together
+    return(temp_matrix)
+  } else {
+    return(ind_nn_count)
+  }
+}

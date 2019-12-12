@@ -8,25 +8,29 @@ suggestion by Farine (2017, MEE), this function permutes raw observations
 underlying structure in the generated social network, and thus can reduce
 both type I and type II error rates." (Farine, 2017)}
 \usage{
-permute_scan_data(ind_sex_permutation = c("Male", "Female"),
-  nn_sex_permutation = c("Male", "Female"), scandata_df, presence_df,
-  n_iter_per_permutation, show_i = TRUE)
+permute_scan_data(
+  ind_nn_single_timeperiod,
+  presence_df,
+  ind_sex_permutation = c("Male", "Female"),
+  nn_sex_permutation = c("Male", "Female"),
+  flips_per_permutation,
+  show_i = FALSE
+)
 }
 \arguments{
+\item{ind_nn_single_timeperiod}{based on ind_nn_df created with
+`prep_red_colobus_ind_nn_data()`}
+
+\item{presence_df}{Dataframe created with `get_presence_rc`}
+
 \item{ind_sex_permutation}{default `c("Male", "Female")`}
 
 \item{nn_sex_permutation}{default `c("Male", "Female")`}
 
-\item{scandata_df}{Data frame with red colobus scan data}
-
-\item{presence_df}{Dataframe created with `get_presence_rc`}
-
-\item{n_iter_per_permutation}{Number of iterations ('NN swaps') per
+\item{flips_per_permutation}{Number of iterations ('NN flips') per
 permutation}
 
-\item{show_i}{Show progress>}
-
-\item{set.seed}{If TRUE, use `set.seed(1209)`}
+\item{show_i}{Show progress}
 }
 \description{
 It does so by choosing a random line from the scan data, and then checks if
@@ -38,9 +42,9 @@ Then, a second (random) row is chosen, and the same checks are done for
 Individual (2) and NN (2). Furthermore, it is controlled that NN1 was present at
 date of second row, and NN2 present at date of first row.
 
-If these conditions are met, the two NNs are swapped.
+If these conditions are met, the two NNs are flipped.
 
-This procedure is repeated `n_iter_per_permutation` times.
+This procedure is repeated `flips_per_permutation` times.
 }
 \examples{
 

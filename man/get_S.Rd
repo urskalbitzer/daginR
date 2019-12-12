@@ -4,8 +4,13 @@
 \alias{get_S}
 \title{Calculate Estimate of Social Different according to Whitehead 2008}
 \usage{
-get_S(x, d, initial.values = c(0.5, 0.5), lower = c(0.01, 0.01),
-  upper = c(1, 10))
+get_S(
+  x,
+  d,
+  initial.values = c(0.5, 0.5),
+  lower = c(0.01, 0.01),
+  upper = c(1, 10)
+)
 }
 \arguments{
 \item{x}{Matrix with values x[ij] number of observations of individuals i and j together}

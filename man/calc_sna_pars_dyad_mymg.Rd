@@ -5,8 +5,12 @@
 \title{Calculate various individual social network parameters based on DSI values
 for multiple years and groups}
 \usage{
-calc_sna_pars_dyad_mymg(edge_table, indA_col = "IndA",
-  indB_col = "IndB", weight_col = "DSI")
+calc_sna_pars_dyad_mymg(
+  edge_table,
+  indA_col = "IndA",
+  indB_col = "IndB",
+  weight_col = "DSI"
+)
 }
 \arguments{
 \item{edge_table}{Table with two individual and one weight column. Also
