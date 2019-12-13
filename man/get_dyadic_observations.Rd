@@ -15,6 +15,7 @@ get_dyadic_observations(
   presence_df,
   max_nn_dist = 5,
   n_permutations = 0,
+  set_seed = 1209,
   ind_sex_permutation = c("Male", "Female"),
   nn_sex_permutation = c("Male", "Female"),
   flips_per_permutation = 1,

@@ -366,6 +366,7 @@ prep_red_colobus_ind_nn_data_one_period <- function(scandata_df,
 #'
 get_dyadic_observations <- function(ind_nn_df, id_sex_df, presence_df,
                                     max_nn_dist = 5, n_permutations = 0,
+                                    set_seed = 1209,
                                     ind_sex_permutation = c("Male", "Female"), # Base this on ind_nn_df?
                                     nn_sex_permutation = c("Male", "Female"), # Base this on ind_nn_df?
                                     flips_per_permutation = 1, ...){
@@ -432,6 +433,7 @@ get_dyadic_observations <- function(ind_nn_df, id_sex_df, presence_df,
     ## observed with IndB as NN
     if(n_permutations > 0){
       ind_nn_single_timeperiod_temp <- ind_nn_single_timeperiod
+      set.seed(set_seed)
       for(j in 1:n_permutations){
         cat("\rPermutation ", j, "/", n_permutations)
 

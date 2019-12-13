@@ -208,8 +208,8 @@ get_strength_from_rates_mymg <- function(rate_table){
 #' It's described in "Precision and power in the analysis of social structure using associations" (Whitehead, 2008, Animal Behaviour) and
 #' "Whitehead, H. 2008. Analyzing Animal Societies: Quantitative Methods for Vertebrate Social Analysis. Chicago: University of Chicago Press."
 #'
-#' @param x Matrix with values x[ij] number of observations of individuals i and j together
-#' @param d Matrix with values d[ij] used as denominator of the estimated association index
+#' @param i_j_sum Matrix with values i_j_sum[ij] used as denominator of the estimated association index (d in the Whitehead paper)
+#' @param i_j_together Matrix with values i_j_together[ij] number of observations of individuals i and j together (x in the Whitehead paper)
 #' @param initial.values Initial values for the parameters to be optimized over (`par` argument in `optim``)
 #' @param lower lower bounds for parameters
 #' @param upper upper bounds for parameters
@@ -218,15 +218,15 @@ get_strength_from_rates_mymg <- function(rate_table){
 #'
 #' @examples
 #'
-get_S <- function(x, d, initial.values = c(0.5, 0.5),
+get_S_from_matrix <- function(i_j_sum, i_j_together, initial.values = c(0.5, 0.5),
                   lower = c(0.01, 0.01), upper = c(1, 10)){
   # Check if d and x are both matrices
-  if(!is.matrix(d)) stop("d is not a matrix")
-  if(!is.matrix(x)) stop("x is not a matrix")
+  if(!is.matrix(i_j_sum)) stop("i_j_sum is not a matrix")
+  if(!is.matrix(i_j_together)) stop("i_j_together is not a matrix")
 
   # Change d and x into vectors of 'distances'
-  dat <- data.frame(dvec = as.vector(as.dist(d)),
-                    xvec = as.vector(as.dist(x)))
+  dat <- data.frame(dvec = as.vector(as.dist(i_j_sum)),
+                    xvec = as.vector(as.dist(i_j_together)))
 
   res <- optim(par = initial.values,
                calc_LL_S,
@@ -241,6 +241,7 @@ get_S <- function(x, d, initial.values = c(0.5, 0.5),
   return(S_mu_logLik)
 }
 
+
 #' Function to calculate likelihood of mu and S (for `get_S``)
 #'
 #' For details, see `get_S`
@@ -254,6 +255,7 @@ get_S <- function(x, d, initial.values = c(0.5, 0.5),
 calc_LL_S <- function(par, data){
 mu <- par[1]
 S <- par[2]
+
 # Define the integrand function
 integrand <- function(alpha){
   alpha^x * (1 - alpha)^(d - x) * dbeta(alpha, shape1 = beta1, shape2 = beta2)
@@ -269,7 +271,7 @@ if(beta1 <= 0 | beta2 <= 0){
   logLik <- 1e10
 } else {
   # Else, calculate the likelihood with the beta parameters
-  # Remove all lines with d = 0
+  # Remove all lines with d = 0 (i.e. individual never recorded while both were present)
   data <- data[data$dvec != 0,]
   ## Then solve integral numerically from 0 to 1 for all dyads (d and x)
   n <- length(data$dvec)
