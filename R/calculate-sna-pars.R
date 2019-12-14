@@ -241,6 +241,93 @@ get_S_from_matrix <- function(i_j_sum, i_j_together, initial.values = c(0.5, 0.5
   return(S_mu_logLik)
 }
 
+#' Calculate multiple estimates of Social Differentiation according to Whitehead
+#' 2008 from an array.
+#'
+#' For details, see `get_S_from_matrix()`. Difference is that this functions
+#' takes an 3d-array, where each slice is an matrix of observed association,
+#' e.g. for permuted networks. Can use parallization, which is highly
+#' recommended.
+#'
+#' @param i_j_together_array Array with matrices with values i_j_together[ij] number of
+#'   observations of individuals i and j together (x in the Whitehead paper)
+#' @param use.parallel TRUE/FALSE
+#' @param cores Number of cores to be used for parallization
+#'
+#' @inheritParams get_S_from_matrix
+#'
+#' @export
+#'
+#' @examples
+#'
+
+get_S_from_array <- function(i_j_sum, i_j_together_array,
+                             initial.values = c(0.5, 0.5),
+                             lower = c(0.01, 0.01), upper = c(1, 10),
+                             use.parallel = FALSE, cores = 1){
+  # Check if i_j_sum is a matrix and i_j_together_array a 3d array
+  if(!is.matrix(i_j_sum)) {
+    stop("i_j_sum is not a matrix")}
+  if(!is.array(i_j_together_array) | length(dim(i_j_together_array)) != 3) {
+    stop("i_j_together_array is not a 3d array")}
+
+  # Prepare (empty) list
+  S_list <- list(mu = NA, S = NA, logLik = NA)
+
+  ### Calculate mu, S, and logLik for all layers of the array
+  # Without parallelization
+  if(!use.parallel){
+    cat("\nWithout parallelization")
+    for(i in 1:dim(i_j_together_array)[[3]]){
+      cat("\n", i, " out of ", dim(i_j_together_array)[[3]])
+      i_j_together_matrix <- i_j_together_array[,,i]
+      temp_S <- get_S_from_matrix(i_j_sum = i_j_sum,
+                                  i_j_together = i_j_together_matrix,
+                                  initial.values = initial.values,
+                                  lower = lower,
+                                  upper = upper)
+
+      S_list$mu[[i]] <- temp_S$mu
+      S_list$S[[i]] <- temp_S$S
+      S_list$logLik[[i]] <- temp_S$logLik
+    }
+    # With parallization
+  } else {
+    cat("\nWith parallelization - progress can be looked up in log.txt")
+    require(doParallel)
+    require(foreach)
+    require(doSNOW)
+    cl <- makeCluster(cores)
+    registerDoSNOW(cl)
+
+    # To get updates while running the loop, create a log-files
+    writeLines(c(""), "log.txt")
+    # Then run the loop
+    temp_S <- foreach(i = 1:dim(i_j_together_array)[[3]],
+                      .combine = "rbind",
+                      .packages = c("daginR")) %dopar%  {
+                        # Write progress in log-file (which can be opened during loop)
+                        cat(paste0("\n", i, " out of ", dim(i_j_together_array)[[3]]),
+                            file = "log.txt", append = TRUE)
+
+                        # Extract matrix from array how often individuals were together
+                        i_j_together_matrix <- i_j_together_array[,,i]
+
+                        # Estimate mu and S
+                        temp_S <- get_S_from_matrix(i_j_sum = i_j_sum,
+                                                    i_j_together = i_j_together_matrix,
+                                                    initial.values = initial.values,
+                                                    lower = lower, upper = upper)
+                        return(temp_S)
+                      }
+    stopCluster(cl)
+    # Add data from parallel processing to list
+    S_list$mu <- as.numeric(temp_S[,"mu"])
+    S_list$S <- as.numeric(temp_S[,"S"])
+    S_list$logLik <- as.numeric(temp_S[,"logLik"])
+  }
+  return(S_list)
+}
 
 #' Function to calculate likelihood of mu and S (for `get_S``)
 #'
