@@ -493,3 +493,63 @@ if(beta1 <= 0 | beta2 <= 0){
 }
 return(logLik)
 }
+
+#' Function to calculate Coefficients of variation (CV) of association indices
+#' Whitehead (2008) suggests to use his estimate of S, instead, but this
+#' approach is also commonly used.
+#'
+#' This function uses a list of the Simple Ratio Association Index (or any other
+#' index) for all included time periods. It then calculate the CV for the
+#' observed data and for matrices of permuted social networks
+#'
+#' @param simple_ratio_list List created with `get_simple_ratios()``
+#' @param perm.by.layer In case not all layers (matrices) of permuted data
+#'   should be included. This is the `by` argument of the `seq()` function.
+#' @param zeros.rm Should all zeros be removed (i.e. dyads that were never
+#'   observed together). Could be problematic with permuted networks.
+#' @param na.rm Should NAs be removed. This argument is probably redudant as all
+#'   NAs are set to 0 (which is correct in this case). But if set to FALSE, it
+#'   controls if all matrices were well constructed.
+#'
+#' @export
+#'
+
+get_CVs_from_timeperiod_list <- function(simple_ratio_list, perm.by.layer = NULL,
+                                         zeros.rm = FALSE, na.rm = FALSE) {
+  # Create empty list
+  cv_list <- vector("list", length = length(simple_ratio_list))
+  attributes(cv_list) <- attributes(simple_ratio_list)
+  attr(cv_list, "perm.by.layer") <- perm.by.layer
+  attr(cv_list, "na_removed") <- na.rm
+  attr(cv_list, "zeros_removed") <- zeros.rm
+
+  # Calculate CV for all time periods and observed and permuted data
+  for(i in 1:length(names(simple_ratio_list))){
+    cat("\n", names(simple_ratio_list)[[i]])
+
+    # Define function to calculate CV from vector of values
+    matrix_to_cv <- function(symmetrical_matrix, zeros.rm = FALSE, na.rm = FALSE){
+      vec <- as.vector(as.dist(symmetrical_matrix))
+      if(zeros.rm) vec <- vec[vec != 0]
+      if(na.rm) vec <- vec[!is.na(vec)]
+      return(sd(vec)/mean(vec))
+    }
+
+    ### 1. Calculate CV for observed data
+    matrix_observed <- simple_ratio_list[[i]]$simple_ratio_observed
+    cv_list[[i]]$observed <- list(cv = matrix_to_cv(matrix_observed, zeros.rm, na.rm))
+
+    ### 2. Calculate CV for permuted data
+    # Create vector of permutations to be included
+    perms_n <- dim(simple_ratio_list[[i]]$simple_ratio_permuted)[[3]]
+    if(is.null(perm.by.layer)){
+      perms_included <- 1:perms_n
+    } else {
+      perms_included <- seq(from = 1, to = perms_n, by = perm.by.layer)
+    }
+    array_permuted <- simple_ratio_list[[i]]$simple_ratio_permuted[,,perms_included]
+    cv_list[[i]]$permuted <- list(cv = apply(array_permuted, MARGIN = 3, FUN = matrix_to_cv,
+                                             zeros.rm, na.rm))
+  }
+  return(cv_list)
+}
