@@ -202,6 +202,115 @@ get_strength_from_rates_mymg <- function(rate_table){
   return(strength_df)
 }
 
+
+
+
+#' Calculate multiple estimates of Social Differentiation according to Whitehead
+#' 2008 from a list of time periods, each with observed and permuted data.
+#'
+#' For details, see `get_S_from_matrix()` and `get_S_from_array()`. Difference
+#' is that this functions takes a list of all time periods, each with observed
+#' (in a matrix) and permuted data (in a 3d-array).
+#'
+#'
+#'
+#' @param dyadic_obs_list List created by `get_dyadic_observations()`
+#' @param perm.start.layer Integer specifying the first permutation to be
+#'   included
+#' @param perm.by.layer Integer specifying the the permutations to be inlcluded
+#'   (`by` argument in the `seq()` function)
+#'
+#' @inheritParams get_S_from_matrix
+#' @inheritParams get_S_from_array
+#'
+#' @export
+#'
+#' @examples
+#'
+
+get_S_from_timeperiod_list <- function(dyadic_obs_list,
+                                       perm.start.layer = 1, perm.by.layer = NULL,
+                                       initial.values, lower, upper,
+                                       use.parallel = FALSE, cores = 1) {
+
+  ### Create empty list for all time periods, copy attributes from original
+  ### list,  add additional attributes.
+  S_list <- vector("list", length = length(dyadic_obs_list))
+  attributes(S_list) <- attributes(dyadic_obs_list)
+  attr(S_list, "perm.start.layer") <- perm.start.layer
+  attr(S_list, "perm.by.layer") <- perm.by.layer
+
+  ### Calculate S (and other parameters) for all time periods, including
+  ### observed and permuted data
+  for(i in 1:length(names(dyadic_obs_list))){
+    cat("\n", names(dyadic_obs_list)[[i]])
+
+    ### Prepare matrixes/arrays:
+
+    # d (i_j_sum_matrix), x observed (i_j_together_observed_matrix), and x
+    # permuted (i_j_together_permuted_array)
+
+    # d
+    i_j_sum_matrix <- dyadic_obs_list[[i]]$n_Ind_while_NN_present
+    # Replace NAs by 0 and summarize both sides of matrix to make it symmetrical
+    i_j_sum_matrix[is.na(i_j_sum_matrix)] <- 0
+    i_j_sum_matrix <- i_j_sum_matrix + t(i_j_sum_matrix)
+
+    # x observed
+    i_j_together_observed_matrix <- dyadic_obs_list[[i]]$n_Ind_NN_together_observed
+    # Replace NAs by 0 and summarize both sides of matrix to make it symmatrical
+    i_j_together_observed_matrix[is.na(i_j_together_observed_matrix)] <- 0
+    i_j_together_observed_matrix <- i_j_together_observed_matrix + t(i_j_together_observed_matrix)
+
+    # x permuted
+    # 1. Limit to a smaller number of permutations to have a reasonable
+    # computation time: Only start with matrix perm.start.layer, and then only
+    # keep every matrix perm.by.layer
+    i_j_together_permuted_array <- dyadic_obs_list[[i]]$n_Ind_NN_together_permuted
+    perms_n <- dim(i_j_together_permuted_array)[[3]]
+    if(is.null(perm.by.layer)){
+      perms_included <- perm.start.layer:perms_n
+    } else {
+      perms_included <- seq(from = perm.start.layer,
+                            to = perms_n,
+                            by = perm.by.layer)
+    }
+    i_j_together_permuted_array <- i_j_together_permuted_array[,,perms_included]
+    # 2. Replace NAs by 0 and summarize both sides of matrix to make it symmetrical
+    i_j_together_permuted_array[is.na(i_j_together_permuted_array)] <- 0
+    # 3. Summarize both sides of matrix to make it symmetrical
+    for(j in 1:dim(i_j_together_permuted_array)[[3]]){
+      i_j_together_permuted_array[,,j] <- i_j_together_permuted_array[,,j] + t(i_j_together_permuted_array[,,j])
+    }
+
+    ### Get S, mu, logLik for observed data
+
+    # This function takes symmetrical matrices and only uses one half of this
+    # matrix to estimate social differentiation
+    cat("\ncalculate S for observed relationships")
+    S_list[[i]]$observed <- get_S_from_matrix(i_j_sum = i_j_sum_matrix,
+                                              i_j_together = i_j_together_observed_matrix,
+                                              initial.values = initial.values,
+                                              lower = lower, upper = upper)
+
+    ### Get S, mu, logLik for permuted data
+
+    # This function takes an array of symmetrical matrices and does the calculation on each matrix
+    cat("\ncalculate S for permuted relationships")
+    S_list[[i]]$permuted <- get_S_from_array(i_j_sum = i_j_sum_matrix,
+                                             i_j_together_array = i_j_together_permuted_array,
+                                             initial.values = initial.values,
+                                             lower = lower, upper = upper,
+                                             use.parallel = use.parallel,
+                                             cores = cores)
+
+    # Add the names of used permutationss
+    S_list[[i]]$permuted$Permutation_i <- dimnames(i_j_together_permuted_array)$Permutation_i
+  }
+  return(S_list)
+}
+
+
 #' Calculate Estimate of Social Different according to Whitehead 2008
 #'
 #' This function uses a max. likelhood to separate the variance of true association indices and the sampling variance.
@@ -219,12 +328,12 @@ get_strength_from_rates_mymg <- function(rate_table){
 #' @examples
 #'
 get_S_from_matrix <- function(i_j_sum, i_j_together, initial.values = c(0.5, 0.5),
-                  lower = c(0.01, 0.01), upper = c(1, 10)){
+                              lower = c(0.01, 0.01), upper = c(1, 10)){
   # Check if d and x are both matrices
   if(!is.matrix(i_j_sum)) stop("i_j_sum is not a matrix")
   if(!is.matrix(i_j_together)) stop("i_j_together is not a matrix")
 
-  # Change d and x into vectors of 'distances'
+  # Change i_j_sum (d) and i_j_together (x) into vectors of 'distances'
   dat <- data.frame(dvec = as.vector(as.dist(i_j_sum)),
                     xvec = as.vector(as.dist(i_j_together)))
 
@@ -240,6 +349,7 @@ get_S_from_matrix <- function(i_j_sum, i_j_together, initial.values = c(0.5, 0.5
 
   return(S_mu_logLik)
 }
+
 
 #' Calculate multiple estimates of Social Differentiation according to Whitehead
 #' 2008 from an array.
@@ -293,7 +403,7 @@ get_S_from_array <- function(i_j_sum, i_j_together_array,
     }
     # With parallization
   } else {
-    cat("\nWith parallelization - progress can be looked up in log.txt")
+    cat("\nWith parallelization - progress can be looked up in log.txt\n")
     require(doParallel)
     require(foreach)
     require(doSNOW)
@@ -320,6 +430,7 @@ get_S_from_array <- function(i_j_sum, i_j_together_array,
                                                     lower = lower, upper = upper)
                         return(temp_S)
                       }
+
     stopCluster(cl)
     # Add data from parallel processing to list
     S_list$mu <- as.numeric(temp_S[,"mu"])
