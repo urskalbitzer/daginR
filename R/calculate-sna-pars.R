@@ -463,47 +463,47 @@ get_S_from_array <- function(i_j_sum, i_j_together_array,
 #'
 
 calc_LL_S <- function(par, data){
-mu <- par[1]
-S <- par[2]
+  mu <- par[1]
+  S <- par[2]
 
-# Define the integrand function
-integrand <- function(alpha){
-  alpha^x * (1 - alpha)^(d - x) * dbeta(alpha, shape1 = beta1, shape2 = beta2)
-}
-
-# Define beta1 and beta2
-beta1 <- mu *     ((1-mu) / (mu * S^2) - 1)
-beta2 <- (1-mu) * ((1-mu) / (mu * S^2) - 1)
-
-# If one of the parameters is 0 or negative, the beta distribution is not defined.
-# In that case, set the logLik to a very large number
-if(beta1 <= 0 | beta2 <= 0){
-  logLik <- 1e10
-} else {
-  # Else, calculate the likelihood with the beta parameters
-  # Remove all lines with d = 0 (i.e. individual never recorded while both were present)
-  data <- data[data$dvec != 0,]
-  ## Then solve integral numerically from 0 to 1 for all dyads (d and x)
-  n <- length(data$dvec)
-  integrated <- rep(NA, n)
-
-  for(i in 1:n){
-    d <- data$dvec[i]
-    x <- data$xvec[i]
-    integrated[i] <- (integrate(integrand, lower = 0, upper = 1, rel.tol = 1e-8, abs.tol = 0))$value
+  # Define the integrand function
+  integrand <- function(alpha){
+    alpha^x * (1 - alpha)^(d - x) * dbeta(alpha, shape1 = beta1, shape2 = beta2)
   }
 
-  # If any result here is 0, the product of all integrated values would be 0.
-  # Then, the log of the product would approach -Inf
-  # Therefore, set the logLik to very large number.
-  if(any(integrated == 0)){
+  # Define beta1 and beta2
+  beta1 <- mu *     ((1-mu) / (mu * S^2) - 1)
+  beta2 <- (1-mu) * ((1-mu) / (mu * S^2) - 1)
+
+  # If one of the parameters is 0 or negative, the beta distribution is not defined.
+  # In that case, set the logLik to a very large number
+  if(beta1 <= 0 | beta2 <= 0){
     logLik <- 1e10
-    # If not, calculate the negative sum of log(integrated) (which is the same as log(prod(integrated)))
   } else {
-    logLik <- -sum(log(integrated))
+    # Else, calculate the likelihood with the beta parameters
+    # Remove all lines with d = 0 (i.e. individual never recorded while both were present)
+    data <- data[data$dvec != 0,]
+    ## Then solve integral numerically from 0 to 1 for all dyads (d and x)
+    n <- length(data$dvec)
+    integrated <- rep(NA, n)
+
+    for(i in 1:n){
+      d <- data$dvec[i]
+      x <- data$xvec[i]
+      integrated[i] <- (integrate(integrand, lower = 0, upper = 1, rel.tol = 1e-8, abs.tol = 0))$value
+    }
+
+    # If any result here is 0, the product of all integrated values would be 0.
+    # Then, the log of the product would approach -Inf
+    # Therefore, set the logLik to very large number.
+    if(any(integrated == 0)){
+      logLik <- 1e10
+      # If not, calculate the negative sum of log(integrated) (which is the same as log(prod(integrated)))
+    } else {
+      logLik <- -sum(log(integrated))
+    }
   }
-}
-return(logLik)
+  return(logLik)
 }
 
 #' Function to calculate Coefficients of variation (CV) of association indices
