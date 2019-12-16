@@ -337,15 +337,24 @@ get_S_from_matrix <- function(i_j_sum, i_j_together, initial.values = c(0.5, 0.5
   dat <- data.frame(dvec = as.vector(as.dist(i_j_sum)),
                     xvec = as.vector(as.dist(i_j_together)))
 
-  res <- optim(par = initial.values,
-               calc_LL_S,
-               data = dat,
-               method = "L-BFGS-B",
-               lower = lower, upper = upper)
+  res <- try(optim(par = initial.values,
+                   calc_LL_S,
+                   data = dat,
+                   method = "L-BFGS-B",
+                   lower = lower, upper = upper),
+             silent = TRUE)
 
-  S_mu_logLik <- list(mu = res$par[1],
-                      S = res$par[2],
-                      logLik = res$value)
+  if(class(res) == "try-error"){
+    S_mu_logLik <- list(mu = NA,
+                        S = NA,
+                        logLik = NA,
+                        error_message = attr(res, "condition")$message)
+  } else {
+    S_mu_logLik <- list(mu = res$par[1],
+                        S = res$par[2],
+                        logLik = res$value,
+                        error_message = NA)
+  }
 
   return(S_mu_logLik)
 }
@@ -382,7 +391,7 @@ get_S_from_array <- function(i_j_sum, i_j_together_array,
     stop("i_j_together_array is not a 3d array")}
 
   # Prepare (empty) list
-  S_list <- list(mu = NA, S = NA, logLik = NA)
+  S_list <- list(mu = NA, S = NA, logLik = NA, error_message = NA)
 
   ### Calculate mu, S, and logLik for all layers of the array
   # Without parallelization
@@ -400,6 +409,8 @@ get_S_from_array <- function(i_j_sum, i_j_together_array,
       S_list$mu[[i]] <- temp_S$mu
       S_list$S[[i]] <- temp_S$S
       S_list$logLik[[i]] <- temp_S$logLik
+      S_list$error_message[[i]] <- temp_S$error_message
+
     }
     # With parallization
   } else {
@@ -433,9 +444,10 @@ get_S_from_array <- function(i_j_sum, i_j_together_array,
 
     stopCluster(cl)
     # Add data from parallel processing to list
-    S_list$mu <- as.numeric(temp_S[,"mu"])
-    S_list$S <- as.numeric(temp_S[,"S"])
-    S_list$logLik <- as.numeric(temp_S[,"logLik"])
+    S_list$mu <- unlist(temp_S[,"mu"], use.names = FALSE)
+    S_list$S <- unlist(temp_S[,"S"], use.names = FALSE)
+    S_list$logLik <- unlist(temp_S[,"logLik"], use.names = FALSE)
+    S_list$error_message <- unlist(temp_S[,"error_message"], use.names = FALSE)
   }
   return(S_list)
 }
