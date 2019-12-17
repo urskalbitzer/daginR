@@ -565,3 +565,60 @@ get_CVs_from_timeperiod_list <- function(simple_ratio_list, perm.by.layer = NULL
   }
   return(cv_list)
 }
+
+
+#' Get matrix correlations from timeperiod list
+#'
+#' Function to calculate correlation coefficients of all two consecutive
+#' networks within a list of timeperiods, each with observed and permuted
+#' association indices.
+#'
+#'
+#' @param simple_ratio_list List created with `get_simple_ratios()`
+#' @inheritParams calc_matrix_correlation
+#' @inheritParams stats::cor
+#'
+#' @export
+#'
+
+get_matrix_cors_from_timeperiod_list <- function(simple_ratio_list, zeros_remove = FALSE,
+                                                 method = c("pearson", "kendall", "spearman")){
+  method <- match.arg(method)
+  timeperiods <- length(simple_ratio_list)
+  # Create empty list for correlation values
+  corr_list = vector("list", length = (timeperiods - 1))
+  # Copy attributes from simple_ratio list (excluding timeperiod information)
+  attributes_to_copy <- names(attributes(simple_ratio_list))
+  attributes_to_copy <- attributes_to_copy[!attributes_to_copy %in% c("names", "timeperiod_start", "timeperiod_end")]
+  attributes(corr_list) <- attributes(simple_ratio_list)[attributes_to_copy]
+  # Set additional attributes
+  corr_list <- structure(corr_list,
+                         corr_method = method,
+                         names = paste0("t", 1:(timeperiods - 1), "_t", 2:timeperiods),
+                         t1_start = attr(simple_ratio_list, "timeperiod_start")[1:(timeperiods - 1)],
+                         t1_end = attr(simple_ratio_list, "timeperiod_end")[1:(timeperiods - 1)],
+                         t2_start = attr(simple_ratio_list, "timeperiod_start")[2:timeperiods],
+                         t2_end = attr(simple_ratio_list, "timeperiod_end")[2:timeperiods])
+
+
+  # For all consecutive periods of time periods, calculate the correlation between networks
+  for(i in 1:(timeperiods - 1)){
+    cat("\nProcess", names(corr_list)[[i]])
+    # Get the pair of timeperiods i and i+1
+    t1 <- simple_ratio_list[[i]]
+    t2 <- simple_ratio_list[[i + 1]]
+    # Calculate correlation of observed networks
+    corr_list[[i]]$observed <- as.numeric(calc_matrix_correlation(t1$simple_ratio_observed,
+                                                                  t2$simple_ratio_observed,
+                                                                  zeros_remove = zeros_remove,
+                                                                  method = method)$statistic)
+    # Calculate correlations of permuted networks
+    corr_list[[i]]$permuted <- sapply(1:dim(t1$simple_ratio_permuted)[[3]],
+                                      FUN = function(x)
+                                        calc_matrix_correlation(t1$simple_ratio_permuted[,,x],
+                                                                t2$simple_ratio_permuted[,,x],
+                                                                zeros_remove = zeros_remove,
+                                                                method = method)$statistic)
+  }
+  return(corr_list)
+}
