@@ -622,3 +622,72 @@ get_matrix_cors_from_timeperiod_list <- function(simple_ratio_list, zeros_remove
   }
   return(corr_list)
 }
+
+#' Calculates the Partner Preference Index (PPI) based on two network matrices.
+#'
+#' This function calculate the Partner Preference Index (PPI) as described by
+#' Silk, Cheney and Seyfarth (2013, Evolutionary Anthropology):
+#'
+#' PPI = (2S -  U)/(2S - S - X) with S = number of partner rank slots being
+#' evaluated (here `n_Slots`), U = Number of different top partners that the
+#' individual had in those years, and X = Number of top partners present in t1,
+#' but not t2:
+#'
+#' @param m1,m2 The two matrices.
+#' @param n_Slots number of top partners evaluated (S in Silk et al. 2013)
+#' @param if FALSE, returns a single value. If TRUE, a dataframe with details
+#'
+#' @export
+#'
+calc_ppi <- function(m1, m2, n_Slots = 3, details = FALSE){
+  # Determine distinct individuals in t1 and t2
+  # Only evaluate partner preference for individuals who are present in t1 and t2
+  # (Not possible to evaluate preference for other individuals)
+  inds_t1 <- rownames(m1)
+  inds_t2 <- rownames(m2)
+  inds_to_evaluate <- intersect(inds_t1, inds_t2)
+
+  # For each individual who is present in t1 and t2 determine ppi"
+  # Create empty dataframe
+  cols_to_create <- c("ind",
+                      paste0("top_t1_", 1:n_Slots),
+                      paste0("top_t2_", 1:n_Slots),
+                      "n_top_t1t2",
+                      "n_top_t1_not_present_t2")
+  df <- data.frame(matrix(ncol = length(cols_to_create), nrow = length(inds_to_evaluate)))
+  colnames(df) <- cols_to_create
+
+  # For the calculation of PPI = = (2S -  U)/(2S - S - X)
+  # S = n_Slots
+  # U = union(top_t1, top_t2) with top_t1, top_t2 = top_n_partners in t1/t2
+  # X = n_top_t1_not_present_in_t2
+  for(i in seq_along(inds_to_evaluate)){
+    ind = inds_to_evaluate[i]
+    top_t1 <- sort(m1[ind,], decreasing = TRUE)[1:n_Slots]
+    top_t2 <- sort(m2[ind,], decreasing = TRUE)[1:n_Slots]
+    # Check if n_Slots top partners were available
+    if(length(top_t1) != n_Slots | length(top_t2) != n_Slots) stop("Length of top partners not equal to S")
+
+    top_t1t2 <- union(names(top_t1), names(top_t2))
+    top_t1_not_present_t2 <- setdiff(names(top_t1), inds_t2)
+
+    vals <- c(ind, names(top_t1), names(top_t2), length(top_t1t2),
+              length(top_t1_not_present_t2))
+    if(length(names(df)) != length(vals)) stop("(internal): colnames differ between template and new df")
+    for(j in 1:length(vals)){
+      df[i,j] <- vals[j]
+    }
+  }
+  # Now, calculate PPI
+  df$n_top_t1t2 <- as.numeric(df$n_top_t1t2)
+  df$n_top_t1_not_present_t2 <- as.numeric(df$n_top_t1_not_present_t2)
+  df$ppi <- (2 * n_Slots - df$n_top_t1t2) /
+    (2 * n_Slots - n_Slots - df$n_top_t1_not_present_t2)
+
+  # Return entire dataframe, or only the group average
+  if(details) {
+    return(df)
+  } else {
+    mean(df$ppi, na.rm = TRUE)
+  }
+}
