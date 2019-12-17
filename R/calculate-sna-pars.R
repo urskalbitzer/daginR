@@ -691,3 +691,52 @@ calc_ppi <- function(m1, m2, n_Slots = 3, details = FALSE){
     mean(df$ppi, na.rm = TRUE)
   }
 }
+
+#' Get the Partner Preference Index (PPI) from timeperiod list with association indices.
+#'
+#' Function to calculate the Partner Preference Index (PPI) of all two consecutive
+#' networks within a list of timeperiods, each with observed and permuted
+#' association indices.
+#'
+#'
+#' @param simple_ratio_list List created with `get_simple_ratios()`
+#'
+#' @inheritParams calc_ppi
+#'
+#'
+#' @export
+#'
+get_ppi_from_timeperiod_list <- function(simple_ratio_list, n_slots = 3){
+  timeperiods <- length(simple_ratio_list)
+  # Create empty list for correlation values
+  ppi_list = vector("list", length = (timeperiods - 1))
+  # Copy attributes from simple_ratio list (excluding timeperiod information)
+  attributes_to_copy <- names(attributes(simple_ratio_list))
+  attributes_to_copy <- attributes_to_copy[!attributes_to_copy %in% c("names", "timeperiod_start", "timeperiod_end")]
+  attributes(ppi_list) <- attributes(simple_ratio_list)[attributes_to_copy]
+  # Set additional attributes
+  ppi_list <- structure(ppi_list,
+                        n_slots = n_slots,
+                        names = paste0("t", 1:(timeperiods - 1), "_t", 2:timeperiods),
+                        t1_start = attr(simple_ratio_list, "timeperiod_start")[1:(timeperiods - 1)],
+                        t1_end = attr(simple_ratio_list, "timeperiod_end")[1:(timeperiods - 1)],
+                        t2_start = attr(simple_ratio_list, "timeperiod_start")[2:timeperiods],
+                        t2_end = attr(simple_ratio_list, "timeperiod_end")[2:timeperiods])
+
+
+  # For all consecutive periods of time periods, calculate the correlation between networks
+  for(i in 1:(timeperiods - 1)){
+    cat("\nProcess", names(ppi_list)[[i]])
+    # Get the pair of timeperiods i and i+1
+    t1 <- simple_ratio_list[[i]]
+    t2 <- simple_ratio_list[[i + 1]]
+    # Calculate correlation of observed networks
+    ppi_list[[i]]$observed <- calc_ppi(t1$simple_ratio_observed, t2$simple_ratio_observed)
+    # Calculate correlations of permuted networks
+    ppi_list[[i]]$permuted <- sapply(1:dim(t1$simple_ratio_permuted)[[3]],
+                                     FUN = function(x)
+                                       calc_ppi(t1$simple_ratio_permuted[,,x],
+                                                t2$simple_ratio_permuted[,,x]))
+  }
+  return(ppi_list)
+}
