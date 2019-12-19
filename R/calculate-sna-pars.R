@@ -738,3 +738,63 @@ get_ppi_from_timeperiod_list <- function(simple_ratio_list, n_slots = 3){
   }
   return(ppi_list)
 }
+
+
+
+#' Calculates the global clustering coefficient (or transitivity) of a network.
+#'
+#' This function uses the `igraph::transitivity()` function to calculate the
+#' global clustering coefficient of a network. The input should be a matrix with
+#' something like an association index as the weight of connections between
+#' nodes.
+#'
+#' @param m Adjacency matrix with weights of connections.
+#'
+#' @inheritParams igraph::transitivity
+#'
+#'
+get_transitivity_from_ratio_matrix <- function(m, weighted = TRUE, diag = FALSE, mode = "lower"){
+  m_graph <- igraph::graph_from_adjacency_matrix(m, weighted = weighted, diag = diag, mode = mode)
+  return(igraph::transitivity(m_graph))
+}
+
+
+#' Function to calculate the global Clusterin Coefficient (CC) from simple ratios.
+#'
+#' This function uses a list of the Simple Ratio Association Index (or any other
+#' index) for all included time periods. It then calculate the CC for the
+#' observed data and for matrices of permuted social networks
+#'
+#' @inheritParams get_CVs_from_timeperiod_list
+#'
+#' @export
+#'
+get_CCs_from_timeperiod_list <- function(simple_ratio_list, perm.by.layer = NULL) {
+  # Create empty list
+  cc_list <- vector("list", length = length(simple_ratio_list))
+  attributes(cc_list) <- attributes(simple_ratio_list)
+  attr(cc_list, "perm.by.layer") <- perm.by.layer
+  attr(cc_list, "na_removed") <- na.rm
+  attr(cc_list, "zeros_removed") <- zeros.rm
+
+  # Calculate CC for all time periods and observed and permuted data
+  for(i in 1:length(names(simple_ratio_list))){
+    cat("\n", names(simple_ratio_list)[[i]])
+
+    ### 1. Calculate CC for observed data
+    matrix_observed <- simple_ratio_list[[i]]$simple_ratio_observed
+    cc_list[[i]]$observed <- list(cc = get_transitivity_from_ratio_matrix(matrix_observed))
+
+    ### 2. Calculate CC for permuted data
+    # Create vector of permutations to be included
+    perms_n <- dim(simple_ratio_list[[i]]$simple_ratio_permuted)[[3]]
+    if(is.null(perm.by.layer)){
+      perms_included <- 1:perms_n
+    } else {
+      perms_included <- seq(from = 1, to = perms_n, by = perm.by.layer)
+    }
+    array_permuted <- simple_ratio_list[[i]]$simple_ratio_permuted[,,perms_included]
+    cc_list[[i]]$permuted <- list(cc = apply(array_permuted, MARGIN = 3, FUN = get_transitivity_from_ratio_matrix))
+  }
+  return(cc_list)
+}
