@@ -131,8 +131,6 @@ reach <-  function(graph, weights = igraph::E(graph)$weight, mode=c("all", "in",
   return(s)
 }
 
-
-
 #' Calculate individual strength
 #'
 #' Determines Strength

@@ -33,6 +33,7 @@ get_simple_ratios <- function(dyadic_obs_list, i_j_observed_sum_min, new_dim_nam
     # x (i and j associated), yij (i and j observed but not associated) and
     # yi/yj (number of times only individual i/j observed). See, e.g. Whitehead 2008
     i_j_observed_sum <- dyadic_obs_list[[i]]$n_Ind_while_NN_present
+    i_j_observed_sum[is.na(i_j_observed_sum)] <- 0
     i_j_observed_sum <- i_j_observed_sum + t(i_j_observed_sum)
 
     # Set all values below minimum number of observations to NA
