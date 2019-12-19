@@ -774,8 +774,6 @@ get_CCs_from_timeperiod_list <- function(simple_ratio_list, perm.by.layer = NULL
   cc_list <- vector("list", length = length(simple_ratio_list))
   attributes(cc_list) <- attributes(simple_ratio_list)
   attr(cc_list, "perm.by.layer") <- perm.by.layer
-  attr(cc_list, "na_removed") <- na.rm
-  attr(cc_list, "zeros_removed") <- zeros.rm
 
   # Calculate CC for all time periods and observed and permuted data
   for(i in 1:length(names(simple_ratio_list))){
