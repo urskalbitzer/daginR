@@ -862,6 +862,7 @@ get_fast_greedy <- function(m){
   cluster_info$algorithm = m_clusters$algorithm
   cluster_info$n_clusters = length(unique(m_clusters$membership))
   cluster_info$n_inds = m_clusters$vcount
+  cluster_info$ratio_clusters_inds_scaled <- (cluster_info$n_clusters - 1) / (cluster_info$n_inds - 1)
   return(cluster_info)
 }
 
@@ -875,7 +876,7 @@ get_fast_greedy <- function(m){
 #' @export
 #'
 
-get_info_map <- function(m){
+get_infomap <- function(m){
   # Change upper half of symmetric matrix into igraph-object
   m_graph <- igraph::graph_from_adjacency_matrix(m, weighted = TRUE, diag = FALSE, mode = "upper")
   # Calculate clusters using fast greedy
@@ -887,5 +888,6 @@ get_info_map <- function(m){
   cluster_info$algorithm = m_clusters$algorithm
   cluster_info$n_clusters = length(unique(m_clusters$membership))
   cluster_info$n_inds = m_clusters$vcount
+  cluster_info$ratio_clusters_inds_scaled <- (cluster_info$n_clusters - 1) / (cluster_info$n_inds - 1)
   return(cluster_info)
 }
