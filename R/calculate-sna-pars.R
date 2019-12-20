@@ -796,3 +796,96 @@ get_CCs_from_timeperiod_list <- function(simple_ratio_list, perm.by.layer = NULL
   }
   return(cc_list)
 }
+
+#' Function to estimates of clustering in a network using different algorithms
+#'
+#' This function uses a symmetric adjacancy matrix and uses the following
+#' functions from the `igraph` package to estimate the number of clusters and
+#' the modularity in a network: `cluster_fast_greedy`, `cluster_infomap`,
+#' `cluster_louvain`, `cluster_optimal`, `cluster_walktrap`
+#'
+#' @param m symmetric adjajency matrix of a network with values reflecting
+#'   relationships among individuals.
+#'
+#' @export
+#'
+
+get_cluster_estimates <- function(m){
+  # Change upper half of symmetric matrix into igraph-object
+  m_graph <- igraph::graph_from_adjacency_matrix(m, weighted = TRUE, diag = FALSE, mode = "upper")
+  # Calculate clusters using five of the common algorithms
+  # (the others didn't work with the data)
+  m_clusters <- list()
+  m_clusters[[1]] <- igraph::cluster_fast_greedy(m_graph)
+  m_clusters[[2]] <- igraph::cluster_infomap(m_graph)
+  m_clusters[[3]] <- igraph::cluster_louvain(m_graph)
+  m_clusters[[4]] <- igraph::cluster_optimal(m_graph)
+  m_clusters[[5]] <- igraph::cluster_walktrap(m_graph)
+  # Then summarize the cluster information for all five algorithms
+  for(i in 1:length(m_clusters)){
+    cluster_modularity <- igraph::modularity(x = m_graph,
+                                             membership = m_clusters[[i]]$membership,
+                                             weights = igraph::E(m_graph)$weight)
+    df_temp <- tibble(cluster_algorithm = m_clusters[[i]]$algorithm,
+                      n_clusters = length(unique(m_clusters[[i]]$membership)),
+                      n_inds = m_clusters[[i]]$vcount,
+                      cluster_modularity = cluster_modularity)
+    if(i == 1){
+      df_cluster_info <- df_temp
+    } else {
+      df_cluster_info <- bind_rows(df_cluster_info, df_temp)
+    }
+  }
+
+  return(df_cluster_info)
+}
+
+#' Function to estimates of clustering in a network using the fast_greedy algorithm.
+#'
+#' This function uses a symmetric adjacancy matrix and uses the `igraph::cluster_fast_greedy`
+#' function to estimate the number of clusters and the modularity of a network.
+#'
+#' @param m symmetric adjajency matrix of a network with values reflecting relationships among individuals.
+#'
+#' @export
+#'
+
+get_fast_greedy <- function(m){
+  # Change upper half of symmetric matrix into igraph-object
+  m_graph <- igraph::graph_from_adjacency_matrix(m, weighted = TRUE, diag = FALSE, mode = "upper")
+  # Calculate clusters using fast greedy
+  m_clusters <- igraph::cluster_fast_greedy(m_graph)
+  cluster_info <- list()
+  cluster_info$modularity <- igraph::modularity(x = m_graph,
+                                                membership = m_clusters$membership,
+                                                weights = igraph::E(m_graph)$weight)
+  cluster_info$algorithm = m_clusters$algorithm
+  cluster_info$n_clusters = length(unique(m_clusters$membership))
+  cluster_info$n_inds = m_clusters$vcount
+  return(cluster_info)
+}
+
+#' Function to estimates of clustering in a network using the fast_greedy algorithm.
+#'
+#' This function uses a symmetric adjacancy matrix and uses the `igraph::cluster_infomap`
+#' function to estimate the number of clusters and the modularity of a network.
+#'
+#' @param m symmetric adjajency matrix of a network with values reflecting relationships among individuals.
+#'
+#' @export
+#'
+
+get_info_map <- function(m){
+  # Change upper half of symmetric matrix into igraph-object
+  m_graph <- igraph::graph_from_adjacency_matrix(m, weighted = TRUE, diag = FALSE, mode = "upper")
+  # Calculate clusters using fast greedy
+  m_clusters <- igraph::cluster_infomap(m_graph)
+  cluster_info <- list()
+  cluster_info$modularity <- igraph::modularity(x = m_graph,
+                                                membership = m_clusters$membership,
+                                                weights = igraph::E(m_graph)$weight)
+  cluster_info$algorithm = m_clusters$algorithm
+  cluster_info$n_clusters = length(unique(m_clusters$membership))
+  cluster_info$n_inds = m_clusters$vcount
+  return(cluster_info)
+}
