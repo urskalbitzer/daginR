@@ -848,3 +848,64 @@ get_infomap <- function(m){
   cluster_info$ratio_clusters_inds_scaled <- (cluster_info$n_clusters - 1) / (cluster_info$n_inds - 1)
   return(cluster_info)
 }
+
+#' Function that uses two algorithms (fast_greedy, infomap) to get info about
+#' clusters from simple ratios.
+#'
+#' This function uses a list of the Simple Ratio Association Index (or any other
+#' index) for all included time periods. It then calculates modularity and the
+#' ratio of individuals/estimated groups scaled from 0 to 1
+#' (ratio_clusters_inds_scaled) from the observed data and for matrices of permuted
+#' social networks. It use two algorithms from the `igraph` package:
+#' cluster_infomap and cluster_fast_greedy f
+#'
+#'
+#' @inheritParams get_CVs_from_timeperiod_list
+#'
+#' @export
+#'
+
+get_cluster_info_from_timeperiod_list <- function(simple_ratio_list, perm.by.layer = NULL) {
+  # Create empty list
+  cluster_list <- vector("list", length = length(simple_ratio_list))
+  attributes(cluster_list) <- attributes(simple_ratio_list)
+  attr(cluster_list, "perm.by.layer") <- perm.by.layer
+
+  # Calculate CV for all time periods and observed and permuted data
+  for(i in 1:length(names(simple_ratio_list))){
+    cat("\n", names(simple_ratio_list)[[i]])
+
+
+    ### 1. Calculate clusters for observed data
+    matrix_observed <- simple_ratio_list[[i]]$simple_ratio_observed
+
+    fast_greedy_temp <- get_fast_greedy(matrix_observed)
+    cluster_list[[i]]$observed$fast_greedy_ratio <- fast_greedy_temp$ratio_clusters_inds_scaled
+    cluster_list[[i]]$observed$fast_greedy_modularity <- fast_greedy_temp$modularity
+
+    infomap_temp <- get_infomap(matrix_observed)
+    cluster_list[[i]]$observed$infomap_ratio <- infomap_temp$ratio_clusters_inds_scaled
+    cluster_list[[i]]$observed$infomap_modularity <- infomap_temp$modularity
+
+    ### 2. Calculate clusters for permuted data
+    # Create vector of permutations to be included
+    perms_n <- dim(simple_ratio_list[[i]]$simple_ratio_permuted)[[3]]
+    if(is.null(perm.by.layer)){
+      perms_included <- 1:perms_n
+    } else {
+      perms_included <- seq(from = 1, to = perms_n, by = perm.by.layer)
+    }
+    array_permuted <- simple_ratio_list[[i]]$simple_ratio_permuted[,,perms_included]
+
+    fast_greedy_temp <- apply(array_permuted, MARGIN = 3, FUN = get_fast_greedy)
+    infomap_temp = apply(array_permuted, MARGIN = 3, FUN = get_infomap)
+
+
+    cluster_list[[i]]$permuted <- list(
+      fast_greedy_ratio =       sapply(fast_greedy_temp, function(x) x$ratio_clusters_inds_scaled),
+      fast_greedy_modularity =  sapply(fast_greedy_temp, function(x) x$modularity),
+      infomap_ratio =           sapply(infomap_temp,     function(x) x$ratio_clusters_inds_scaled),
+      infomap_modularity =      sapply(infomap_temp,     function(x) x$modularity))
+  }
+  return(cluster_list)
+}
