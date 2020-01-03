@@ -351,8 +351,6 @@ prep_red_colobus_ind_nn_data_one_period <- function(scandata_df,
 #' @param ind_nn_df Data frame with information on indviduals and nearest
 #'   neighours from red colobus scan data. Created with
 #'   `prep_red_colobus_ind_nn_data()`
-#' @param id_sex_df Table with sex of individuals. This is the link table
-#'   created with `create_link_table`
 #' @param max_nn_dist The maximum distance for which an individual is still
 #'   considered NN. Default is 5 (m)
 #' @param n_permutations How many permutations should be conducted?
@@ -364,7 +362,8 @@ prep_red_colobus_ind_nn_data_one_period <- function(scandata_df,
 #'
 #' @examples
 #'
-get_dyadic_observations <- function(ind_nn_df, id_sex_df, presence_df,
+get_dyadic_observations <- function(ind_nn_df, presence_df,
+                                    i_obs_min = 5,
                                     max_nn_dist = 5, n_permutations = 0,
                                     set_seed = 1209,
                                     ind_sex_permutation = c("Male", "Female"), # Base this on ind_nn_df?
@@ -384,6 +383,7 @@ get_dyadic_observations <- function(ind_nn_df, id_sex_df, presence_df,
                                        names = time_periods_labels,
                                        timeperiod_start = time_periods[[1]],
                                        timeperiod_end = time_periods[[2]],
+                                       i_obs_min = i_obs_min,
                                        max_nn_dist = max_nn_dist,
                                        n_permutations = n_permutations,
                                        ind_sex_permutation = ind_sex_permutation,
@@ -401,8 +401,17 @@ get_dyadic_observations <- function(ind_nn_df, id_sex_df, presence_df,
       select(YearOf, MonthOf, Individual, Ind_Adult, Ind_Sex,
              NN, NN_Adult, NN_Sex, Dist)
 
-    # Setup dataframe with all dyads (both directions) per month and information on adult-presence and sex
-    Names <- union(unique(ind_nn_single_timeperiod$Individual), unique(ind_nn_single_timeperiod$NN))
+    # Only keep individuals that where observed at least i_obs_min (as
+    # Individual or NN) within max_nn_dist of another individual.
+    # Then, setup the dataframe with all dyads (both directions) per month
+    # and information on adult-presence and sex.
+    Names <- bind_rows(
+      select(ind_nn_single_timeperiod, Name = Individual, Dist),
+      select(ind_nn_single_timeperiod, Name = NN, Dist)) %>%
+      filter(Dist <= max_nn_dist) %>%
+      count(Name) %>%
+      filter(n >= i_obs_min) %>%
+      pluck("Name")
     YearOf = distinct(ind_nn_single_timeperiod, YearOf, MonthOf)$YearOf
     MonthOf = distinct(ind_nn_single_timeperiod, YearOf, MonthOf)$MonthOf
 

@@ -19,5 +19,7 @@ index) for all included time periods. It then calculates modularity and the
 ratio of individuals/estimated groups scaled from 0 to 1
 (ratio_clusters_inds_scaled) from the observed data and for matrices of permuted
 social networks. It use two algorithms from the `igraph` package:
-cluster_infomap and cluster_fast_greedy f
+cluster_infomap and cluster_fast_greedy.
+Publications that discuss different ways of assessing modularity:
+Scott Emmons et al, 2016, Plos One (infomap, Blondel, label propagation, smart local moving)
 }

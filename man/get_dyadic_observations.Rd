@@ -11,8 +11,8 @@ Individual A for a time period (where both were adult and present;
 \usage{
 get_dyadic_observations(
   ind_nn_df,
-  id_sex_df,
   presence_df,
+  i_obs_min = 5,
   max_nn_dist = 5,
   n_permutations = 0,
   set_seed = 1209,
@@ -26,9 +26,6 @@ get_dyadic_observations(
 \item{ind_nn_df}{Data frame with information on indviduals and nearest
 neighours from red colobus scan data. Created with
 `prep_red_colobus_ind_nn_data()`}
-
-\item{id_sex_df}{Table with sex of individuals. This is the link table
-created with `create_link_table`}
 
 \item{presence_df}{Dataframe created with `get_presence_rc`}
 
