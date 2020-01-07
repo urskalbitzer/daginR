@@ -798,54 +798,32 @@ get_CCs_from_timeperiod_list <- function(simple_ratio_list, perm.by.layer = NULL
   return(cc_list)
 }
 
-#' Function to estimates of clustering in a network using the fast_greedy algorithm.
+#' Function to estimates of clustering in a network using the specified algorithm.
 #'
-#' This function uses a symmetric adjacancy matrix and uses the `igraph::cluster_fast_greedy`
-#' function to estimate the number of clusters and the modularity of a network.
+#' This function uses a symmetric adjacancy matrix and uses one of the `igraph::cluster_`
+#' functions to estimate the number of clusters and the modularity of a network.
 #'
 #' @param m symmetric adjajency matrix of a network with values reflecting relationships among individuals.
+#' @param cluster_method see `?igraph::communities` for available functions. E.g. `cluster_fastgreedy`
 #'
 #' @export
 #'
 
-get_fast_greedy <- function(m){
+get_communities <- function(m, cluster_method = NULL){
+  if(is.null(cluster_method)) { stop("no method specificied") }
   # Change upper half of symmetric matrix into igraph-object
   m_graph <- igraph::graph_from_adjacency_matrix(m, weighted = TRUE, diag = FALSE, mode = "upper")
-  # Calculate clusters using fast greedy
-  m_clusters <- igraph::cluster_fast_greedy(m_graph)
+  # Calculate clusters using specified method
+
+  community_object <- do.call(cluster_method, list(m_graph))
+
   cluster_info <- list()
   cluster_info$modularity <- igraph::modularity(x = m_graph,
-                                                membership = m_clusters$membership,
+                                                membership = community_object$membership,
                                                 weights = igraph::E(m_graph)$weight)
-  cluster_info$algorithm = m_clusters$algorithm
-  cluster_info$n_clusters = length(unique(m_clusters$membership))
-  cluster_info$n_inds = m_clusters$vcount
-  cluster_info$ratio_clusters_inds_scaled <- (cluster_info$n_clusters - 1) / (cluster_info$n_inds - 1)
-  return(cluster_info)
-}
-
-#' Function to estimates of clustering in a network using the fast_greedy algorithm.
-#'
-#' This function uses a symmetric adjacancy matrix and uses the `igraph::cluster_infomap`
-#' function to estimate the number of clusters and the modularity of a network.
-#'
-#' @param m symmetric adjajency matrix of a network with values reflecting relationships among individuals.
-#'
-#' @export
-#'
-
-get_infomap <- function(m){
-  # Change upper half of symmetric matrix into igraph-object
-  m_graph <- igraph::graph_from_adjacency_matrix(m, weighted = TRUE, diag = FALSE, mode = "upper")
-  # Calculate clusters using fast greedy
-  m_clusters <- igraph::cluster_infomap(m_graph)
-  cluster_info <- list()
-  cluster_info$modularity <- igraph::modularity(x = m_graph,
-                                                membership = m_clusters$membership,
-                                                weights = igraph::E(m_graph)$weight)
-  cluster_info$algorithm = m_clusters$algorithm
-  cluster_info$n_clusters = length(unique(m_clusters$membership))
-  cluster_info$n_inds = m_clusters$vcount
+  cluster_info$algorithm = cluster_method
+  cluster_info$n_clusters = length(unique(community_object$membership))
+  cluster_info$n_inds = community_object$vcount
   cluster_info$ratio_clusters_inds_scaled <- (cluster_info$n_clusters - 1) / (cluster_info$n_inds - 1)
   return(cluster_info)
 }
@@ -881,11 +859,11 @@ get_cluster_info_from_timeperiod_list <- function(simple_ratio_list, perm.by.lay
     ### 1. Calculate clusters for observed data
     matrix_observed <- simple_ratio_list[[i]]$simple_ratio_observed
 
-    fast_greedy_temp <- get_fast_greedy(matrix_observed)
+    fast_greedy_temp <- get_communities(matrix_observed, cluster_method = "cluster_louvain")
     cluster_list[[i]]$observed$fast_greedy_ratio <- fast_greedy_temp$ratio_clusters_inds_scaled
     cluster_list[[i]]$observed$fast_greedy_modularity <- fast_greedy_temp$modularity
 
-    infomap_temp <- get_infomap(matrix_observed)
+    infomap_temp <- get_communities(matrix_observed, cluster_method = "cluster_walktrap")
     cluster_list[[i]]$observed$infomap_ratio <- infomap_temp$ratio_clusters_inds_scaled
     cluster_list[[i]]$observed$infomap_modularity <- infomap_temp$modularity
 
@@ -899,8 +877,8 @@ get_cluster_info_from_timeperiod_list <- function(simple_ratio_list, perm.by.lay
     }
     array_permuted <- simple_ratio_list[[i]]$simple_ratio_permuted[,,perms_included]
 
-    fast_greedy_temp <- apply(array_permuted, MARGIN = 3, FUN = get_fast_greedy)
-    infomap_temp = apply(array_permuted, MARGIN = 3, FUN = get_infomap)
+    fast_greedy_temp <- apply(array_permuted, MARGIN = 3, FUN = get_communities, cluster_method = "cluster_louvain")
+    infomap_temp = apply(array_permuted, MARGIN = 3, FUN = get_communities, cluster_method = "cluster_walktrap")
 
 
     cluster_list[[i]]$permuted <- list(
