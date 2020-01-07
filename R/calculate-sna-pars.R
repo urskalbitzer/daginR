@@ -752,6 +752,7 @@ get_ppi_from_timeperiod_list <- function(simple_ratio_list, n_slots = 3){
 #'
 #' @inheritParams igraph::transitivity
 #'
+#' @export
 #'
 get_transitivity_from_ratio_matrix <- function(m, weighted = TRUE, diag = FALSE, mode = "lower"){
   m_graph <- igraph::graph_from_adjacency_matrix(m, weighted = weighted, diag = diag, mode = mode)
