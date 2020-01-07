@@ -840,52 +840,52 @@ get_communities <- function(m, cluster_method = NULL){
 #' Publications that discuss different ways of assessing modularity:
 #' Scott Emmons et al, 2016, Plos One (infomap, Blondel, label propagation, smart local moving)
 #'
-#' @inheritParams get_CVs_from_timeperiod_list
+#' @param cluster_methods one or more of the `igraph::cluster_` function (see `?igraph::communities` for available functions).
 #'
+#' @inheritParams get_CVs_from_timeperiod_list
+#' @inheritParams get_communities
 #' @export
 #'
 
-get_cluster_info_from_timeperiod_list <- function(simple_ratio_list, perm.by.layer = NULL) {
+get_cluster_info_from_timeperiod_list <- function(simple_ratio_list, perm.by.layer = NULL,
+                                                  cluster_methods = NULL) {
+  if(is.null(cluster_methods)) { stop("cluster_methods not defined") }
   # Create empty list
   cluster_list <- vector("list", length = length(simple_ratio_list))
   attributes(cluster_list) <- attributes(simple_ratio_list)
   attr(cluster_list, "perm.by.layer") <- perm.by.layer
 
   # Calculate CV for all time periods and observed and permuted data
-  for(i in 1:length(names(simple_ratio_list))){
-    cat("\n", names(simple_ratio_list)[[i]])
+  for(timeperiod_i in 1:length(names(simple_ratio_list))){
+    cat("\n", names(simple_ratio_list)[[timeperiod_i]])
 
 
     ### 1. Calculate clusters for observed data
-    matrix_observed <- simple_ratio_list[[i]]$simple_ratio_observed
+    matrix_observed <- simple_ratio_list[[timeperiod_i]]$simple_ratio_observed
 
-    fast_greedy_temp <- get_communities(matrix_observed, cluster_method = "cluster_louvain")
-    cluster_list[[i]]$observed$fast_greedy_ratio <- fast_greedy_temp$ratio_clusters_inds_scaled
-    cluster_list[[i]]$observed$fast_greedy_modularity <- fast_greedy_temp$modularity
-
-    infomap_temp <- get_communities(matrix_observed, cluster_method = "cluster_walktrap")
-    cluster_list[[i]]$observed$infomap_ratio <- infomap_temp$ratio_clusters_inds_scaled
-    cluster_list[[i]]$observed$infomap_modularity <- infomap_temp$modularity
+    for(cluster_method in cluster_methods){
+      cluster_temp <- get_communities(matrix_observed, cluster_method = cluster_method)
+      cluster_list[[timeperiod_i]]$observed <- c(cluster_list[[timeperiod_i]]$observed,
+                                                 setNames(cluster_temp[c("ratio_clusters_inds_scaled", "modularity")],
+                                                          paste0(cluster_method, c("_ratio", "_modularity"))))
+    }
 
     ### 2. Calculate clusters for permuted data
     # Create vector of permutations to be included
-    perms_n <- dim(simple_ratio_list[[i]]$simple_ratio_permuted)[[3]]
+    perms_n <- dim(simple_ratio_list[[timeperiod_i]]$simple_ratio_permuted)[[3]]
     if(is.null(perm.by.layer)){
       perms_included <- 1:perms_n
     } else {
       perms_included <- seq(from = 1, to = perms_n, by = perm.by.layer)
     }
-    array_permuted <- simple_ratio_list[[i]]$simple_ratio_permuted[,,perms_included]
-
-    fast_greedy_temp <- apply(array_permuted, MARGIN = 3, FUN = get_communities, cluster_method = "cluster_louvain")
-    infomap_temp = apply(array_permuted, MARGIN = 3, FUN = get_communities, cluster_method = "cluster_walktrap")
-
-
-    cluster_list[[i]]$permuted <- list(
-      fast_greedy_ratio =       sapply(fast_greedy_temp, function(x) x$ratio_clusters_inds_scaled),
-      fast_greedy_modularity =  sapply(fast_greedy_temp, function(x) x$modularity),
-      infomap_ratio =           sapply(infomap_temp,     function(x) x$ratio_clusters_inds_scaled),
-      infomap_modularity =      sapply(infomap_temp,     function(x) x$modularity))
+    array_permuted <- simple_ratio_list[[timeperiod_i]]$simple_ratio_permuted[,,perms_included]
+    for(cluster_method in cluster_methods){
+      cluster_temp_list <- apply(array_permuted, MARGIN = 3, FUN = get_communities, cluster_method = cluster_method)
+      cluster_list[[timeperiod_i]]$permuted <- c(cluster_list[[timeperiod_i]]$permuted,
+                                                 setNames(list(sapply(cluster_temp_list, function(x) x$ratio_clusters_inds_scaled),
+                                                               sapply(cluster_temp_list, function(x) x$modularity)),
+                                                          paste0(cluster_method, c("_ratio", "_modularity"))))
+    }
   }
   return(cluster_list)
 }

@@ -5,13 +5,19 @@
 \title{Function that uses two algorithms (fast_greedy, infomap) to get info about
 clusters from simple ratios.}
 \usage{
-get_cluster_info_from_timeperiod_list(simple_ratio_list, perm.by.layer = NULL)
+get_cluster_info_from_timeperiod_list(
+  simple_ratio_list,
+  perm.by.layer = NULL,
+  cluster_methods = NULL
+)
 }
 \arguments{
 \item{simple_ratio_list}{List created with `get_simple_ratios()``}
 
 \item{perm.by.layer}{In case not all layers (matrices) of permuted data
 should be included. This is the `by` argument of the `seq()` function.}
+
+\item{cluster_methods}{one or more of the `igraph::cluster_` function (see `?igraph::communities` for available functions).}
 }
 \description{
 This function uses a list of the Simple Ratio Association Index (or any other
