@@ -606,12 +606,12 @@ get_matrix_cors_from_timeperiod_list <- function(simple_ratio_list, zeros_remove
     t1 <- simple_ratio_list[[i]]
     t2 <- simple_ratio_list[[i + 1]]
     # Calculate correlation of observed networks
-    corr_list[[i]]$observed <- as.numeric(calc_matrix_correlation(t1$simple_ratio_observed,
+    corr_list[[i]]$observed$cor_coef <- as.numeric(calc_matrix_correlation(t1$simple_ratio_observed,
                                                                   t2$simple_ratio_observed,
                                                                   zeros_remove = zeros_remove,
                                                                   method = method)$statistic)
     # Calculate correlations of permuted networks
-    corr_list[[i]]$permuted <- sapply(1:dim(t1$simple_ratio_permuted)[[3]],
+    corr_list[[i]]$permuted$cor_coef <- sapply(1:dim(t1$simple_ratio_permuted)[[3]],
                                       FUN = function(x)
                                         calc_matrix_correlation(t1$simple_ratio_permuted[,,x],
                                                                 t2$simple_ratio_permuted[,,x],
@@ -627,17 +627,17 @@ get_matrix_cors_from_timeperiod_list <- function(simple_ratio_list, zeros_remove
 #' Silk, Cheney and Seyfarth (2013, Evolutionary Anthropology):
 #'
 #' PPI = (2S -  U)/(2S - S - X) with S = number of partner rank slots being
-#' evaluated (here `n_Slots`), U = Number of different top partners that the
+#' evaluated (here `n_slots`), U = Number of different top partners that the
 #' individual had in those years, and X = Number of top partners present in t1,
 #' but not t2:
 #'
 #' @param m1,m2 The two matrices.
-#' @param n_Slots number of top partners evaluated (S in Silk et al. 2013)
+#' @param n_slots number of top partners evaluated (S in Silk et al. 2013)
 #' @param if FALSE, returns a single value. If TRUE, a dataframe with details
 #'
 #' @export
 #'
-calc_ppi <- function(m1, m2, n_Slots = 3, details = FALSE){
+calc_ppi <- function(m1, m2, n_slots = 3, details = FALSE){
   # Determine distinct individuals in t1 and t2
   # Only evaluate partner preference for individuals who are present in t1 and t2
   # (Not possible to evaluate preference for other individuals)
@@ -648,23 +648,23 @@ calc_ppi <- function(m1, m2, n_Slots = 3, details = FALSE){
   # For each individual who is present in t1 and t2 determine ppi"
   # Create empty dataframe
   cols_to_create <- c("ind",
-                      paste0("top_t1_", 1:n_Slots),
-                      paste0("top_t2_", 1:n_Slots),
+                      paste0("top_t1_", 1:n_slots),
+                      paste0("top_t2_", 1:n_slots),
                       "n_top_t1t2",
                       "n_top_t1_not_present_t2")
   df <- data.frame(matrix(ncol = length(cols_to_create), nrow = length(inds_to_evaluate)))
   colnames(df) <- cols_to_create
 
   # For the calculation of PPI = = (2S -  U)/(2S - S - X)
-  # S = n_Slots
+  # S = n_slots
   # U = union(top_t1, top_t2) with top_t1, top_t2 = top_n_partners in t1/t2
   # X = n_top_t1_not_present_in_t2
   for(i in seq_along(inds_to_evaluate)){
     ind = inds_to_evaluate[i]
-    top_t1 <- sort(m1[ind,], decreasing = TRUE)[1:n_Slots]
-    top_t2 <- sort(m2[ind,], decreasing = TRUE)[1:n_Slots]
-    # Check if n_Slots top partners were available
-    if(length(top_t1) != n_Slots | length(top_t2) != n_Slots) stop("Length of top partners not equal to S")
+    top_t1 <- sort(m1[ind,], decreasing = TRUE)[1:n_slots]
+    top_t2 <- sort(m2[ind,], decreasing = TRUE)[1:n_slots]
+    # Check if n_slots top partners were available
+    if(length(top_t1) != n_slots | length(top_t2) != n_slots) stop("Length of top partners not equal to S")
 
     top_t1t2 <- union(names(top_t1), names(top_t2))
     top_t1_not_present_t2 <- setdiff(names(top_t1), inds_t2)
@@ -679,8 +679,8 @@ calc_ppi <- function(m1, m2, n_Slots = 3, details = FALSE){
   # Now, calculate PPI
   df$n_top_t1t2 <- as.numeric(df$n_top_t1t2)
   df$n_top_t1_not_present_t2 <- as.numeric(df$n_top_t1_not_present_t2)
-  df$ppi <- (2 * n_Slots - df$n_top_t1t2) /
-    (2 * n_Slots - n_Slots - df$n_top_t1_not_present_t2)
+  df$ppi <- (2 * n_slots - df$n_top_t1t2) /
+    (2 * n_slots - n_slots - df$n_top_t1_not_present_t2)
 
   # Return entire dataframe, or only the group average
   if(details) {
@@ -729,12 +729,15 @@ get_ppi_from_timeperiod_list <- function(simple_ratio_list, n_slots = 3){
     t1 <- simple_ratio_list[[i]]
     t2 <- simple_ratio_list[[i + 1]]
     # Calculate correlation of observed networks
-    ppi_list[[i]]$observed <- calc_ppi(t1$simple_ratio_observed, t2$simple_ratio_observed)
+    ppi_list[[i]]$observed$ppi <- calc_ppi(t1$simple_ratio_observed,
+                                           t2$simple_ratio_observed,
+                                           n_slots = n_slots)
     # Calculate correlations of permuted networks
-    ppi_list[[i]]$permuted <- sapply(1:dim(t1$simple_ratio_permuted)[[3]],
+    ppi_list[[i]]$permuted$ppi <- sapply(1:dim(t1$simple_ratio_permuted)[[3]],
                                      FUN = function(x)
                                        calc_ppi(t1$simple_ratio_permuted[,,x],
-                                                t2$simple_ratio_permuted[,,x]))
+                                                t2$simple_ratio_permuted[,,x],
+                                                n_slots = n_slots))
   }
   return(ppi_list)
 }
@@ -866,8 +869,8 @@ get_cluster_info_from_timeperiod_list <- function(simple_ratio_list, perm.by.lay
     for(cluster_method in cluster_methods){
       cluster_temp <- get_communities(matrix_observed, cluster_method = cluster_method)
       cluster_list[[timeperiod_i]]$observed <- c(cluster_list[[timeperiod_i]]$observed,
-                                                 setNames(cluster_temp[c("ratio_clusters_inds_scaled", "modularity")],
-                                                          paste0(cluster_method, c("_ratio", "_modularity"))))
+                                                 setNames(cluster_temp[c("n_inds", "n_clusters", "ratio_clusters_inds_scaled", "modularity")],
+                                                          paste0(cluster_method, c("_n_inds", "_n_clusters", "_ratio", "_modularity"))))
     }
 
     ### 2. Calculate clusters for permuted data
@@ -882,9 +885,11 @@ get_cluster_info_from_timeperiod_list <- function(simple_ratio_list, perm.by.lay
     for(cluster_method in cluster_methods){
       cluster_temp_list <- apply(array_permuted, MARGIN = 3, FUN = get_communities, cluster_method = cluster_method)
       cluster_list[[timeperiod_i]]$permuted <- c(cluster_list[[timeperiod_i]]$permuted,
-                                                 setNames(list(sapply(cluster_temp_list, function(x) x$ratio_clusters_inds_scaled),
+                                                 setNames(list(sapply(cluster_temp_list, function(x) x$n_inds),
+                                                               sapply(cluster_temp_list, function(x) x$n_clusters),
+                                                               sapply(cluster_temp_list, function(x) x$ratio_clusters_inds_scaled),
                                                                sapply(cluster_temp_list, function(x) x$modularity)),
-                                                          paste0(cluster_method, c("_ratio", "_modularity"))))
+                                                          paste0(cluster_method, c("_n_inds", "_n_clusters", "_ratio", "_modularity"))))
     }
   }
   return(cluster_list)
